@@ -1,0 +1,39 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg18-trixie
+    environment:
+      POSTGRES_USER: cognitive
+      POSTGRES_PASSWORD: cognitive
+      POSTGRES_DB: cognitive_memory
+    ports:
+      - "5432:5432"
+    volumes:
+      - cognitive_pg_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cognitive -d cognitive_memory"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  db_migrator:
+    build: .
+    env_file:
+      - .env.example
+    command: ["alembic", "upgrade", "head"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  teatro:
+    build: .
+    env_file:
+      - .env.example
+    ports:
+      - "8000:8000"
+    depends_on:
+      db_migrator:
+        condition: service_completed_successfully
+    command: ["uvicorn", "cognitive_memory.main:app", "--host", "0.0.0.0", "--port", "8000"]
+
+volumes:
+  cognitive_pg_data:
