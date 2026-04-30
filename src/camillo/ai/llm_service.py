@@ -2,8 +2,8 @@ import logging
 
 from litellm import acompletion, aembedding
 
-from cognitive_memory.ai.prompts import VALENCE_PROMPT
-from cognitive_memory.settings import settings
+from camillo.ai.prompts import VALENCE_PROMPT
+from camillo.settings import settings
 
 logger = logging.getLogger(__name__)
 

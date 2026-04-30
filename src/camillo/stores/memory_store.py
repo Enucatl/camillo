@@ -5,7 +5,7 @@ from uuid import UUID
 from sqlalchemy import desc, func, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from cognitive_memory.db.models import Memory
+from camillo.db.models import Memory
 
 
 class MemoryStore:

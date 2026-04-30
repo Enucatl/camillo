@@ -1,4 +1,4 @@
-# Cognitive Memory Stack
+# Camillo
 
 A Python 3.14 Postgres-native cognitive memory service with FastAPI, async SQLAlchemy,
 pgvector, LiteLLM provider wrappers, ACT-R inspired activation, and Hebbian edge
@@ -75,7 +75,7 @@ Run the real PostgreSQL/pgvector integration tests against a migrated database:
 
 ```bash
 RUN_DB_TESTS=1 \
-DATABASE_URL=postgresql+asyncpg://cognitive:cognitive@localhost:5432/cognitive_memory \
+DATABASE_URL=postgresql+asyncpg://camillo:camillo@localhost:5432/camillo \
 uv run --extra dev pytest tests/test_postgres_memory_flow.py
 ```
 

@@ -1,6 +1,6 @@
-from cognitive_memory.db.models import Memory
-from cognitive_memory.interfaces import CompletionProvider, EmbeddingProvider, GraphStoreProtocol
-from cognitive_memory.interfaces import MemoryStoreProtocol
+from camillo.db.models import Memory
+from camillo.interfaces import CompletionProvider, EmbeddingProvider, GraphStoreProtocol
+from camillo.interfaces import MemoryStoreProtocol
 
 
 class IngestionService:

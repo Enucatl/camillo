@@ -7,8 +7,8 @@ from sqlalchemy import DateTime, Float, ForeignKey, Integer, String, Text, Uniqu
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from cognitive_memory.db.base import Base
-from cognitive_memory.settings import settings
+from camillo.db.base import Base
+from camillo.settings import settings
 
 
 def utc_now() -> datetime:

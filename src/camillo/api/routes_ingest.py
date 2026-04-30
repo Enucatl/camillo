@@ -1,12 +1,12 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from cognitive_memory.ai.llm_service import LiteLLMService
-from cognitive_memory.cognitive.ingestion_service import IngestionService
-from cognitive_memory.db.session import get_db
-from cognitive_memory.schemas.ingest import IngestRequest, IngestResponse
-from cognitive_memory.stores.graph_store import GraphStore
-from cognitive_memory.stores.memory_store import MemoryStore
+from camillo.ai.llm_service import LiteLLMService
+from camillo.cognitive.ingestion_service import IngestionService
+from camillo.db.session import get_db
+from camillo.schemas.ingest import IngestRequest, IngestResponse
+from camillo.stores.graph_store import GraphStore
+from camillo.stores.memory_store import MemoryStore
 
 router = APIRouter()
 

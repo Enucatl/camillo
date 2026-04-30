@@ -1,6 +1,6 @@
 from datetime import UTC, datetime, timedelta
 
-from cognitive_memory.cognitive.cognitive_math import calculate_activation, calculate_edge_decay
+from camillo.cognitive.cognitive_math import calculate_activation, calculate_edge_decay
 
 
 def test_activation_is_higher_for_recent_memory_than_stale_memory() -> None:

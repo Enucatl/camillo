@@ -2,8 +2,8 @@ from types import SimpleNamespace
 
 import pytest
 
-from cognitive_memory.ai import llm_service
-from cognitive_memory.ai.llm_service import LiteLLMService
+from camillo.ai import llm_service
+from camillo.ai.llm_service import LiteLLMService
 
 
 @pytest.mark.asyncio

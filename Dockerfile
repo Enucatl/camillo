@@ -16,4 +16,4 @@ RUN pip install -e ".[dev,trace]"
 
 EXPOSE 8000
 
-CMD ["uvicorn", "cognitive_memory.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "camillo.main:app", "--host", "0.0.0.0", "--port", "8000"]

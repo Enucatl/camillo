@@ -1,7 +1,7 @@
 from typing import Any, Protocol, runtime_checkable
 from uuid import UUID
 
-from cognitive_memory.db.models import Memory
+from camillo.db.models import Memory
 
 
 @runtime_checkable

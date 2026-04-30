@@ -5,7 +5,7 @@ from itertools import combinations
 from typing import Any
 from uuid import UUID, uuid4
 
-from cognitive_memory.db.models import Memory
+from camillo.db.models import Memory
 
 
 def synthetic_embedding(text: str, dim: int = 32) -> list[float]:

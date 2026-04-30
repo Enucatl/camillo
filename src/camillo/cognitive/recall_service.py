@@ -1,8 +1,8 @@
 from uuid import UUID
 
-from cognitive_memory.cognitive.cognitive_math import calculate_activation
-from cognitive_memory.interfaces import EmbeddingProvider, GraphStoreProtocol, MemoryStoreProtocol
-from cognitive_memory.settings import settings
+from camillo.cognitive.cognitive_math import calculate_activation
+from camillo.interfaces import EmbeddingProvider, GraphStoreProtocol, MemoryStoreProtocol
+from camillo.settings import settings
 
 
 class RecallService:

@@ -1,6 +1,6 @@
 import logging
 
-from cognitive_memory.settings import settings
+from camillo.settings import settings
 
 
 def configure_logging() -> None:

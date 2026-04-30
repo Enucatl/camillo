@@ -1,6 +1,6 @@
 from fastapi.testclient import TestClient
 
-from cognitive_memory.main import app
+from camillo.main import app
 
 
 def test_health_returns_ok() -> None:

@@ -6,13 +6,13 @@ from uuid import uuid4
 import pytest
 from sqlalchemy import delete, select
 
-from cognitive_memory.cognitive.ingestion_service import IngestionService
-from cognitive_memory.cognitive.recall_service import RecallService
-from cognitive_memory.db.models import HebbianEdge, Memory
-from cognitive_memory.db.session import AsyncSessionLocal
-from cognitive_memory.settings import settings
-from cognitive_memory.stores.graph_store import GraphStore
-from cognitive_memory.stores.memory_store import MemoryStore
+from camillo.cognitive.ingestion_service import IngestionService
+from camillo.cognitive.recall_service import RecallService
+from camillo.db.models import HebbianEdge, Memory
+from camillo.db.session import AsyncSessionLocal
+from camillo.settings import settings
+from camillo.stores.graph_store import GraphStore
+from camillo.stores.memory_store import MemoryStore
 from tests.fakes import FakeLLMService
 
 pytestmark = pytest.mark.integration

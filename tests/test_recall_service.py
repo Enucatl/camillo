@@ -3,7 +3,7 @@ import time
 
 import pytest
 
-from cognitive_memory.cognitive.recall_service import RecallService
+from camillo.cognitive.recall_service import RecallService
 from tests.fakes import FakeGraphStore, FakeLLMService, FakeMemoryStore, make_memory
 
 

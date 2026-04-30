@@ -1,8 +1,8 @@
-from cognitive_memory.ai.llm_service import LiteLLMService
-from cognitive_memory.interfaces import CompletionProvider, EmbeddingProvider, Reranker
-from cognitive_memory.interfaces import GraphStoreProtocol, MemoryStoreProtocol
-from cognitive_memory.stores.graph_store import GraphStore
-from cognitive_memory.stores.memory_store import MemoryStore
+from camillo.ai.llm_service import LiteLLMService
+from camillo.interfaces import CompletionProvider, EmbeddingProvider, Reranker
+from camillo.interfaces import GraphStoreProtocol, MemoryStoreProtocol
+from camillo.stores.graph_store import GraphStore
+from camillo.stores.memory_store import MemoryStore
 
 
 def test_litellm_service_satisfies_provider_interfaces() -> None:

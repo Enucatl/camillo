@@ -1,7 +1,7 @@
 import sys
 import types
 
-from cognitive_memory import tracing_config
+from camillo import tracing_config
 
 
 def test_phoenix_tracing_disabled_by_default(monkeypatch):

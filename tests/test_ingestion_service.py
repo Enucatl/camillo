@@ -1,6 +1,6 @@
 import pytest
 
-from cognitive_memory.cognitive.ingestion_service import IngestionService
+from camillo.cognitive.ingestion_service import IngestionService
 from tests.fakes import FakeGraphStore, FakeLLMService, FakeMemoryStore
 
 

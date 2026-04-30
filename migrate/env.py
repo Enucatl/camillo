@@ -6,9 +6,9 @@ from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
-from cognitive_memory.db.base import Base
-from cognitive_memory.db import models  # noqa: F401
-from cognitive_memory.settings import settings
+from camillo.db.base import Base
+from camillo.db import models  # noqa: F401
+from camillo.settings import settings
 
 config = context.config
 config.set_main_option("sqlalchemy.url", settings.database_url)

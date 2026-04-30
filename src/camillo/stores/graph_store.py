@@ -5,7 +5,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from cognitive_memory.db.models import HebbianEdge
+from camillo.db.models import HebbianEdge
 
 
 class GraphStore:

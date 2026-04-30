@@ -2,15 +2,15 @@ services:
   postgres:
     image: pgvector/pgvector:pg18-trixie
     environment:
-      POSTGRES_USER: cognitive
-      POSTGRES_PASSWORD: cognitive
-      POSTGRES_DB: cognitive_memory
+      POSTGRES_USER: camillo
+      POSTGRES_PASSWORD: camillo
+      POSTGRES_DB: camillo
     ports:
       - "5432:5432"
     volumes:
-      - cognitive_pg_data:/var/lib/postgresql
+      - camillo_pg_data:/var/lib/postgresql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U cognitive -d cognitive_memory"]
+      test: ["CMD-SHELL", "pg_isready -U camillo -d camillo"]
       interval: 5s
       timeout: 5s
       retries: 20
@@ -33,7 +33,7 @@ services:
     depends_on:
       db_migrator:
         condition: service_completed_successfully
-    command: ["uvicorn", "cognitive_memory.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    command: ["uvicorn", "camillo.main:app", "--host", "0.0.0.0", "--port", "8000"]
 
 volumes:
-  cognitive_pg_data:
+  camillo_pg_data:

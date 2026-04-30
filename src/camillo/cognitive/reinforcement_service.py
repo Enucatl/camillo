@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from cognitive_memory.interfaces import GraphStoreProtocol, MemoryStoreProtocol
+from camillo.interfaces import GraphStoreProtocol, MemoryStoreProtocol
 
 
 class ReinforcementService:
