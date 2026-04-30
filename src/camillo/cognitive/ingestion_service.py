@@ -1,15 +1,22 @@
 from camillo.db.models import Memory
-from camillo.interfaces import CompletionProvider, EmbeddingProvider, GraphStoreProtocol
-from camillo.interfaces import MemoryStoreProtocol
+from camillo.interfaces import (
+    CompletionProvider,
+    EmbeddingProvider,
+    GraphStoreProtocol,
+    MemoryStoreProtocol,
+)
 
 
 class IngestionService:
+    """Coordinates interaction ingestion into memory and graph storage."""
+
     def __init__(
         self,
         memory_store: MemoryStoreProtocol,
         graph_store: GraphStoreProtocol,
         llm_service: CompletionProvider | EmbeddingProvider,
     ):
+        """Initialize ingestion with storage and AI provider dependencies."""
         self.memory_store = memory_store
         self.graph_store = graph_store
         self.llm_service = llm_service
@@ -21,6 +28,17 @@ class IngestionService:
         ai_msg: str,
         session_id: str | None,
     ) -> Memory:
+        """Store a user/assistant interaction as an episodic memory.
+
+        Args:
+            namespace: Logical memory partition.
+            user_msg: User side of the interaction.
+            ai_msg: Assistant side of the interaction.
+            session_id: Optional conversation id used to link adjacent turns.
+
+        Returns:
+            The inserted memory model.
+        """
         raw_content = f"User:\n{user_msg}\n\nAssistant:\n{ai_msg}"
         base_importance = await self.llm_service.score_valence(raw_content)
         embedding = await self.llm_service.get_embedding(raw_content)

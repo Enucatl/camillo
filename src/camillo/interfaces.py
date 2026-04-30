@@ -1,26 +1,38 @@
-from typing import Any, Protocol, runtime_checkable
+from abc import ABC, abstractmethod
+from typing import Any
 from uuid import UUID
 
 from camillo.db.models import Memory
 
 
-@runtime_checkable
-class EmbeddingProvider(Protocol):
-    async def get_embedding(self, text: str) -> list[float]: ...
+class EmbeddingProvider(ABC):
+    """Abstract adapter for text embedding providers."""
+
+    @abstractmethod
+    async def get_embedding(self, text: str) -> list[float]:
+        """Embed text into the vector space used by the memory store."""
 
 
-@runtime_checkable
-class CompletionProvider(Protocol):
-    async def score_valence(self, raw_content: str) -> float: ...
+class CompletionProvider(ABC):
+    """Abstract adapter for LLM completion behavior used by cognition services."""
+
+    @abstractmethod
+    async def score_valence(self, raw_content: str) -> float:
+        """Score long-term memory importance on a continuous 0.0-1.0 scale."""
 
 
-@runtime_checkable
-class Reranker(Protocol):
-    async def rerank_results(self, query: str, documents: list[str]) -> list[float]: ...
+class Reranker(ABC):
+    """Abstract adapter for query-document relevance scoring."""
+
+    @abstractmethod
+    async def rerank_results(self, query: str, documents: list[str]) -> list[float]:
+        """Return one relevance score per document."""
 
 
-@runtime_checkable
-class MemoryStoreProtocol(Protocol):
+class MemoryStoreProtocol(ABC):
+    """Abstract persistence boundary for cognitive memories."""
+
+    @abstractmethod
     async def insert_memory(
         self,
         namespace: str,
@@ -30,36 +42,50 @@ class MemoryStoreProtocol(Protocol):
         base_importance: float,
         session_id: str | None = None,
         metadata: dict[str, Any] | None = None,
-    ) -> Memory: ...
+    ) -> Memory:
+        """Persist a memory and return the database-backed model."""
 
+    @abstractmethod
     async def get_previous_memory_in_session(
         self, namespace: str, session_id: str
-    ) -> Memory | None: ...
+    ) -> Memory | None:
+        """Find the latest active memory in the same conversation session."""
 
+    @abstractmethod
     async def vector_candidates(
         self,
         namespace: str,
         embedding: list[float],
         limit: int,
-    ) -> list[tuple[Memory, float]]: ...
+    ) -> list[tuple[Memory, float]]:
+        """Return vector-similar memories with normalized similarity scores."""
 
-    async def fts_candidates(
+    @abstractmethod
+    async def full_text_search_candidates(
         self,
         namespace: str,
         query: str,
         limit: int,
-    ) -> list[tuple[Memory, float]]: ...
+    ) -> list[tuple[Memory, float]]:
+        """Return lexical full-text-search candidates with relevance scores."""
 
-    async def mark_accessed(self, memory_ids: list[UUID]) -> None: ...
+    @abstractmethod
+    async def mark_accessed(self, memory_ids: list[UUID]) -> None:
+        """Record that the recall path surfaced the selected memories."""
 
 
-@runtime_checkable
-class GraphStoreProtocol(Protocol):
+class GraphStoreProtocol(ABC):
+    """Abstract persistence boundary for Hebbian memory edges."""
+
+    @abstractmethod
     async def create_or_increment_edge(
         self,
         source_id: UUID,
         target_id: UUID,
         increment: float = 1.0,
-    ) -> None: ...
+    ) -> None:
+        """Create or strengthen an association between two memories."""
 
-    async def reinforce_clique(self, memory_ids: list[UUID], increment: float = 1.0) -> None: ...
+    @abstractmethod
+    async def reinforce_clique(self, memory_ids: list[UUID], increment: float = 1.0) -> None:
+        """Strengthen pairwise associations among co-recalled memories."""

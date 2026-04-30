@@ -5,6 +5,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
+    """Environment-backed application settings."""
+
     model_config = SettingsConfigDict(
         env_file=(".env.example", ".env"),
         env_file_encoding="utf-8",
@@ -29,12 +31,13 @@ class Settings(BaseSettings):
     decay_rate: float = Field(alias="DECAY_RATE")
     recall_top_k: int = Field(alias="RECALL_TOP_K")
     recall_vector_limit: int = Field(alias="RECALL_VECTOR_LIMIT")
-    recall_fts_limit: int = Field(alias="RECALL_FTS_LIMIT")
+    recall_full_text_search_limit: int = Field(alias="RECALL_FULL_TEXT_SEARCH_LIMIT")
     hebbian_edge_threshold: float = Field(alias="HEBBIAN_EDGE_THRESHOLD")
 
 
 @lru_cache
 def get_settings() -> Settings:
+    """Return a cached settings object for process-wide configuration."""
     return Settings()
 
 

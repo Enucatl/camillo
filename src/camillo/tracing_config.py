@@ -7,6 +7,7 @@ _configured = False
 
 
 def configure_phoenix_tracing() -> bool:
+    """Configure Phoenix tracing once when the optional trace extra is installed."""
     global _configured
 
     if _configured:

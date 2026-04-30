@@ -1,20 +1,32 @@
-VALENCE_PROMPT = """You are scoring the long-term memory value of an AI interaction.
+from functools import lru_cache
 
-Return only a single float between 0.1 and 1.0.
+from jinja2 import Environment, PackageLoader, select_autoescape
 
-Score high for:
-- stable user preferences
-- important project decisions
-- architecture decisions
-- emotional salience
-- repeated patterns
-- commitments or constraints
 
-Score low for:
-- trivial acknowledgements
-- temporary chatter
-- one-off small talk
+@lru_cache
+def _template_environment() -> Environment:
+    """Create the package template environment once per process.
 
-Interaction:
-{raw_content}
-"""
+    Jinja keeps prompt wording in versioned template files, which makes prompt
+    changes reviewable without mixing natural language into Python control flow.
+    """
+    return Environment(
+        loader=PackageLoader("camillo.ai", "templates"),
+        autoescape=select_autoescape(enabled_extensions=()),
+        trim_blocks=True,
+        lstrip_blocks=True,
+    )
+
+
+def render_valence_prompt(raw_content: str) -> str:
+    """Render the memory-importance scoring prompt.
+
+    Args:
+        raw_content: The interaction text to score.
+
+    Returns:
+        A LiteLLM-ready prompt that asks for a continuous importance score.
+    """
+    return (
+        _template_environment().get_template("valence_score.jinja").render(raw_content=raw_content)
+    )

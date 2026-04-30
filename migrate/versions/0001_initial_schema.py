@@ -7,8 +7,8 @@ Create Date: 2026-04-30 00:00:00.000000
 
 from collections.abc import Sequence
 
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 from pgvector.sqlalchemy import Vector
 from sqlalchemy.dialects import postgresql
 

@@ -120,7 +120,7 @@ class FakeMemoryStore:
         matches.sort(key=lambda item: item[1], reverse=True)
         return matches[:limit]
 
-    async def fts_candidates(
+    async def full_text_search_candidates(
         self,
         namespace: str,
         query: str,

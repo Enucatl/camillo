@@ -37,7 +37,7 @@ Conceptually:
 │ PostgresMemoryStore                                           │
 │ PostgresHebbianGraphStore                                     │
 │ Alembic migrations                                            │
-│ pgvector + pg_trgm + FTS                                      │
+│ pgvector + pg_trgm + full_text_search                                      │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -225,7 +225,7 @@ pytest smoke tests
 Add:
 
 ```text
-FTS + vector hybrid search
+full_text_search + vector hybrid search
 RRF merge
 LiteLLM reranking
 activation filtering
@@ -507,7 +507,7 @@ LITELLM_RERANK_MODEL=
 DECAY_RATE=0.01
 RECALL_TOP_K=5
 RECALL_VECTOR_LIMIT=30
-RECALL_FTS_LIMIT=30
+RECALL_full_text_search_LIMIT=30
 HEBBIAN_EDGE_THRESHOLD=2.0
 ```
 
@@ -613,7 +613,7 @@ litellm_rerank_model: str | None
 decay_rate: float
 recall_top_k: int
 recall_vector_limit: int
-recall_fts_limit: int
+recall_full_text_search_limit: int
 hebbian_edge_threshold: float
 ```
 
@@ -966,7 +966,7 @@ similarity = 1.0 - distance
 ```
 
 ```python
-async def fts_candidates(
+async def full_text_search_candidates(
     namespace: str,
     query: str,
     limit: int,
@@ -1114,7 +1114,7 @@ Logic:
 
 1. Embed query.
 2. Get vector candidates, limit from settings.
-3. Get FTS/trigram candidates, limit from settings.
+3. Get full_text_search/trigram candidates, limit from settings.
 4. Merge candidates by memory ID.
 5. For each candidate, calculate:
 
@@ -1332,7 +1332,7 @@ Once Phase 1 is stable, Phase 2 should replace the basic recall service with the
 ```text
 1. Embed query
 2. Vector candidates
-3. FTS/trigram candidates
+3. full_text_search/trigram candidates
 4. RRF merge into top 30
 5. LiteLLM rerank
 6. Drop below relevance threshold

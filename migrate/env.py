@@ -6,8 +6,8 @@ from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
-from camillo.db.base import Base
 from camillo.db import models  # noqa: F401
+from camillo.db.base import Base
 from camillo.settings import settings
 
 config = context.config

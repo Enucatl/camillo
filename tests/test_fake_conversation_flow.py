@@ -4,7 +4,6 @@ from camillo.cognitive.ingestion_service import IngestionService
 from camillo.cognitive.recall_service import RecallService
 from tests.fakes import FakeGraphStore, FakeLLMService, FakeMemoryStore
 
-
 FAKE_CONVERSATIONS = [
     {
         "namespace": "repo:camillo",

@@ -12,10 +12,17 @@ from camillo.settings import settings
 
 
 def utc_now() -> datetime:
+    """Return a timezone-aware UTC timestamp for database defaults."""
     return datetime.now(UTC)
 
 
 class Memory(Base):
+    """Stored cognitive memory.
+
+    Memory rows are namespace-scoped because the service is intended to serve
+    multiple repositories or agents without cross-contaminating recall.
+    """
+
     __tablename__ = "memories"
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
@@ -44,6 +51,12 @@ class Memory(Base):
 
 
 class HebbianEdge(Base):
+    """Undirected associative edge between two memories.
+
+    Edges are stored with a canonical source/target ordering in the store so the
+    same memory pair cannot acquire two independent weights.
+    """
+
     __tablename__ = "hebbian_edges"
     __table_args__ = (UniqueConstraint("source_id", "target_id", name="uq_hebbian_edges_pair"),)
 

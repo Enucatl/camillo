@@ -1,6 +1,10 @@
+[build-system]
+requires = ["setuptools>=80", "setuptools-git-versioning>=2.1"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "camillo"
-version = "0.1.0"
+dynamic = ["version"]
 description = "A Postgres-native cognitive memory stack with LiteLLM, Hebbian edges, and ACT-R inspired decay."
 requires-python = ">=3.14"
 dependencies = [
@@ -13,6 +17,8 @@ dependencies = [
     "pydantic-settings>=2.4.0",
     "pgvector>=0.3.0",
     "litellm>=1.50.0",
+    "jinja2>=3.1.0",
+    "loguru>=0.7.0",
     "python-dotenv>=1.0.0",
     "httpx>=0.27.0",
 ]
@@ -32,6 +38,12 @@ dev = [
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[tool.setuptools.package-data]
+camillo = ["ai/templates/*.jinja"]
+
+[tool.setuptools-git-versioning]
+enabled = true
+
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
@@ -43,3 +55,7 @@ markers = [
 [tool.ruff]
 line-length = 100
 target-version = "py314"
+
+[tool.ruff.lint]
+select = ["ASYNC", "B", "E", "F", "I", "RUF", "UP"]
+ignore = ["B008"]

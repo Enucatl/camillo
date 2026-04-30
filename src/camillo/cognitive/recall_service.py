@@ -6,12 +6,21 @@ from camillo.settings import settings
 
 
 class RecallService:
+    """Coordinates hybrid memory recall and reinforcement."""
+
     def __init__(
         self,
         memory_store: MemoryStoreProtocol,
         graph_store: GraphStoreProtocol,
         llm_service: EmbeddingProvider,
     ):
+        """Initialize recall with storage and embedding dependencies.
+
+        Args:
+            memory_store: Memory persistence port.
+            graph_store: Association graph persistence port.
+            llm_service: Provider used to embed recall queries.
+        """
         self.memory_store = memory_store
         self.graph_store = graph_store
         self.llm_service = llm_service
@@ -22,20 +31,30 @@ class RecallService:
         query: str,
         top_k: int,
     ) -> list[dict]:
+        """Recall the strongest memories for a namespace-scoped query.
+
+        Args:
+            namespace: Logical partition for the caller's memories.
+            query: Natural-language recall query.
+            top_k: Maximum number of memories to return.
+
+        Returns:
+            Serialized memory records with blended retrieval scores.
+        """
         query_embedding = await self.llm_service.get_embedding(query)
         vector_candidates = await self.memory_store.vector_candidates(
             namespace,
             query_embedding,
             settings.recall_vector_limit,
         )
-        fts_candidates = await self.memory_store.fts_candidates(
+        full_text_search_candidates = await self.memory_store.full_text_search_candidates(
             namespace,
             query,
-            settings.recall_fts_limit,
+            settings.recall_full_text_search_limit,
         )
 
         merged: dict[UUID, dict] = {}
-        for memory, retrieval_score in [*vector_candidates, *fts_candidates]:
+        for memory, retrieval_score in [*vector_candidates, *full_text_search_candidates]:
             current = merged.get(memory.id)
             if current is None or retrieval_score > current["retrieval_score"]:
                 merged[memory.id] = {"memory": memory, "retrieval_score": retrieval_score}

@@ -1,6 +1,11 @@
 from camillo.ai.llm_service import LiteLLMService
-from camillo.interfaces import CompletionProvider, EmbeddingProvider, Reranker
-from camillo.interfaces import GraphStoreProtocol, MemoryStoreProtocol
+from camillo.interfaces import (
+    CompletionProvider,
+    EmbeddingProvider,
+    GraphStoreProtocol,
+    MemoryStoreProtocol,
+    Reranker,
+)
 from camillo.stores.graph_store import GraphStore
 from camillo.stores.memory_store import MemoryStore
 

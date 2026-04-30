@@ -6,6 +6,8 @@ from pydantic import BaseModel
 
 
 class MemoryRead(BaseModel):
+    """General serialized memory representation."""
+
     id: UUID
     namespace: str
     session_id: str | None

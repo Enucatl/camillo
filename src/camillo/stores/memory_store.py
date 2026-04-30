@@ -6,10 +6,18 @@ from sqlalchemy import desc, func, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from camillo.db.models import Memory
+from camillo.interfaces import MemoryStoreProtocol
 
 
-class MemoryStore:
+class MemoryStore(MemoryStoreProtocol):
+    """Postgres implementation of the memory persistence boundary."""
+
     def __init__(self, db: AsyncSession):
+        """Initialize the store with a request-scoped async session.
+
+        Args:
+            db: Async SQLAlchemy session owned by the caller.
+        """
         self.db = db
 
     async def insert_memory(
@@ -22,6 +30,7 @@ class MemoryStore:
         session_id: str | None = None,
         metadata: dict[str, Any] | None = None,
     ) -> Memory:
+        """Insert a memory without committing the surrounding transaction."""
         memory = Memory(
             namespace=namespace,
             raw_content=raw_content,
@@ -38,6 +47,7 @@ class MemoryStore:
     async def get_previous_memory_in_session(
         self, namespace: str, session_id: str
     ) -> Memory | None:
+        """Fetch the newest active memory in a session to support adjacency links."""
         result = await self.db.execute(
             select(Memory)
             .where(
@@ -56,6 +66,7 @@ class MemoryStore:
         embedding: list[float],
         limit: int,
     ) -> list[tuple[Memory, float]]:
+        """Return nearest vector matches as similarity scores."""
         distance = Memory.embedding.cosine_distance(embedding).label("distance")
         result = await self.db.execute(
             select(Memory, distance)
@@ -65,12 +76,13 @@ class MemoryStore:
         )
         return [(memory, 1.0 - float(raw_distance)) for memory, raw_distance in result.all()]
 
-    async def fts_candidates(
+    async def full_text_search_candidates(
         self,
         namespace: str,
         query: str,
         limit: int,
     ) -> list[tuple[Memory, float]]:
+        """Return lexical candidates using Postgres trigram similarity."""
         similarity = func.similarity(Memory.raw_content, query).label("similarity")
         result = await self.db.execute(
             select(Memory, similarity)
@@ -81,6 +93,7 @@ class MemoryStore:
         return [(memory, float(score)) for memory, score in result.all()]
 
     async def mark_accessed(self, memory_ids: list[UUID]) -> None:
+        """Update recall bookkeeping for memories surfaced to a caller."""
         if not memory_ids:
             return
         await self.db.execute(

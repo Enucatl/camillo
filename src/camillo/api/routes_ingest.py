@@ -13,6 +13,7 @@ router = APIRouter()
 
 @router.post("/ingest", response_model=IngestResponse)
 async def ingest(request: IngestRequest, db: AsyncSession = Depends(get_db)) -> IngestResponse:
+    """Ingest one user/assistant interaction into durable memory."""
     memory_store = MemoryStore(db)
     graph_store = GraphStore(db)
     llm_service = LiteLLMService()
