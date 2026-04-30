@@ -4,6 +4,15 @@ A Python 3.14 Postgres-native cognitive memory service with FastAPI, async SQLAl
 pgvector, LiteLLM provider wrappers, ACT-R inspired activation, and Hebbian edge
 reinforcement. The main engine service is `teatro`.
 
+Development defaults route LiteLLM through OpenRouter:
+
+- completion: `openrouter/google/gemma-4-31b-it:free`
+- embedding: `openrouter/baai/bge-m3`
+- rerank: `openrouter/cohere/rerank-4-pro`
+
+Set `OPENROUTER_API_KEY` in `.env` before calling `/ingest` or `/recall` with
+the default models. `/health` does not require an LLM key.
+
 Phase 1 includes:
 
 - `GET /health`

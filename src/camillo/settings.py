@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     litellm_completion_model: str = Field(alias="LITELLM_COMPLETION_MODEL")
     litellm_embedding_model: str = Field(alias="LITELLM_EMBEDDING_MODEL")
     litellm_rerank_model: str | None = Field(default=None, alias="LITELLM_RERANK_MODEL")
+    openrouter_api_key: str | None = Field(default=None, alias="OPENROUTER_API_KEY")
     phoenix_tracing_enabled: bool = Field(default=False, alias="PHOENIX_TRACING_ENABLED")
     phoenix_collector_endpoint: str = Field(
         default="http://phoenix.docker.home.arpa:6006",

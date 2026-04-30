@@ -22,7 +22,7 @@ def upgrade() -> None:
     op.execute("CREATE EXTENSION IF NOT EXISTS vector")
     op.execute("CREATE EXTENSION IF NOT EXISTS pg_trgm")
 
-    # This initial schema fixes embeddings at 1536 dimensions. Changing EMBEDDING_DIM
+    # This initial schema fixes embeddings at 1024 dimensions. Changing EMBEDDING_DIM
     # requires a new migration because pgvector dimensions are part of the column type.
     op.create_table(
         "memories",
@@ -30,7 +30,7 @@ def upgrade() -> None:
         sa.Column("namespace", sa.String(length=255), nullable=False),
         sa.Column("session_id", sa.String(length=255), nullable=True),
         sa.Column("raw_content", sa.Text(), nullable=False),
-        sa.Column("embedding", Vector(1536), nullable=False),
+        sa.Column("embedding", Vector(1024), nullable=False),
         sa.Column("type", sa.String(length=50), nullable=False, server_default="episodic"),
         sa.Column("status", sa.String(length=50), nullable=False, server_default="active"),
         sa.Column("base_importance", sa.Float(), nullable=False, server_default="0.5"),
