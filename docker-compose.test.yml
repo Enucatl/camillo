@@ -1,0 +1,103 @@
+name: camillo-test
+
+x-camillo-test-env: &camillo-test-env
+  APP_NAME: Camillo
+  APP_ENV: test
+  LOG_LEVEL: DEBUG
+  DATABASE_URL: postgresql+asyncpg://camillo_test:camillo_test@postgres-test:5432/camillo_test
+  EMBEDDING_DIM: "1024"
+  LITELLM_COMPLETION_MODEL: openrouter/google/gemma-4-31b-it:free
+  LITELLM_EMBEDDING_MODEL: openrouter/baai/bge-m3
+  LITELLM_RERANK_MODEL: openrouter/cohere/rerank-4-pro
+  OPENROUTER_API_KEY: ""
+  PHOENIX_TRACING_ENABLED: "false"
+  PHOENIX_COLLECTOR_ENDPOINT: http://phoenix.docker.home.arpa:6006
+  PHOENIX_PROJECT_NAME: camillo-test
+  DECAY_RATE: "0.01"
+  RECALL_TOP_K: "5"
+  RECALL_VECTOR_LIMIT: "30"
+  RECALL_FULL_TEXT_SEARCH_LIMIT: "30"
+  HEBBIAN_EDGE_THRESHOLD: "2.0"
+
+x-camillo-image: &camillo-image
+  build:
+    context: .
+    dockerfile: Dockerfile
+  image: camillo:test
+  environment:
+    <<: *camillo-test-env
+  tmpfs:
+    - /tmp:rw,noexec,nosuid,mode=1777,size=64m
+  networks:
+    - test
+
+services:
+  postgres-test:
+    extends:
+      file: ../compose-security-baseline/hardening.yml
+      service: postgres
+    image: pgvector/pgvector:pg18-trixie
+    environment:
+      POSTGRES_USER: camillo_test
+      POSTGRES_PASSWORD: camillo_test
+      POSTGRES_DB: camillo_test
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U camillo_test -d camillo_test"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: "no"
+    tmpfs:
+      - /var/lib/postgresql:rw,noexec,nosuid,uid=999,gid=999,size=256m
+      - /var/run/postgresql:rw,noexec,nosuid,mode=2775,uid=999,gid=999,size=16m
+    networks:
+      - test
+
+  migrate-test:
+    extends:
+      file: ../compose-security-baseline/hardening.yml
+      service: hardened-medium
+    <<: *camillo-image
+    command: ["alembic", "upgrade", "head"]
+    healthcheck:
+      disable: true
+    restart: "no"
+    depends_on:
+      postgres-test:
+        condition: service_healthy
+
+  app-test:
+    extends:
+      file: ../compose-security-baseline/hardening.yml
+      service: hardened-large
+    <<: *camillo-image
+    restart: "no"
+    depends_on:
+      migrate-test:
+        condition: service_completed_successfully
+
+  pytest:
+    extends:
+      file: ../compose-security-baseline/hardening.yml
+      service: hardened-large
+    <<: *camillo-image
+    environment:
+      <<: *camillo-test-env
+      RUN_DB_TESTS: "1"
+    command: ["pytest", "-p", "no:cacheprovider", "-m", "not performance"]
+    healthcheck:
+      disable: true
+    restart: "no"
+    volumes:
+      - ./tests:/app/tests:ro
+    depends_on:
+      postgres-test:
+        condition: service_healthy
+      migrate-test:
+        condition: service_completed_successfully
+      app-test:
+        condition: service_healthy
+
+networks:
+  test:
+    internal: true

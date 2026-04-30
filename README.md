@@ -79,6 +79,18 @@ uv run --extra dev ruff format .
 uv run --extra dev pytest
 ```
 
+Run the full containerized test stack:
+
+```bash
+docker compose -f docker-compose.test.yml up --build --force-recreate --exit-code-from pytest pytest
+docker compose -f docker-compose.test.yml down --remove-orphans
+```
+
+This uses `docker-compose.test.yml` to build the application image, start an
+isolated tmpfs-backed PostgreSQL/pgvector database, run Alembic migrations, wait
+for the app healthcheck, and execute pytest with PostgreSQL integration tests
+enabled. The stack uses its own Compose project and internal network.
+
 Run the synthetic performance tests under Scalene:
 
 ```bash
