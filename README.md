@@ -11,6 +11,7 @@ Phase 1 includes:
 - `POST /recall`
 - Alembic migrations for `memories` and `hebbian_edges`
 - pgvector, trigram similarity, and basic access reinforcement
+- Docker Compose security baseline hardening via `../compose-security-baseline/hardening.yml`
 
 ## Run
 
@@ -18,6 +19,12 @@ Phase 1 includes:
 cp .env.example .env
 docker compose up --build
 ```
+
+Compose services:
+
+- `postgres`: PostgreSQL 18 with pgvector
+- `sipario`: one-shot Alembic migration runner
+- `teatro`: FastAPI application server
 
 Check health:
 

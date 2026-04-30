@@ -1,5 +1,8 @@
 services:
   postgres:
+    extends:
+      file: ../compose-security-baseline/hardening.yml
+      service: postgres
     image: pgvector/pgvector:pg18-trixie
     environment:
       POSTGRES_USER: camillo
@@ -15,23 +18,34 @@ services:
       timeout: 5s
       retries: 20
 
-  db_migrator:
+  sipario:
+    extends:
+      file: ../compose-security-baseline/hardening.yml
+      service: hardened-medium
     build: .
+    restart: "no"
     env_file:
       - .env.example
     command: ["alembic", "upgrade", "head"]
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
     depends_on:
       postgres:
         condition: service_healthy
 
   teatro:
+    extends:
+      file: ../compose-security-baseline/hardening.yml
+      service: hardened-large
     build: .
     env_file:
       - .env.example
     ports:
       - "8000:8000"
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
     depends_on:
-      db_migrator:
+      sipario:
         condition: service_completed_successfully
     command: ["uvicorn", "camillo.main:app", "--host", "0.0.0.0", "--port", "8000"]
 
