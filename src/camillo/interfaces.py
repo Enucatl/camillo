@@ -22,11 +22,19 @@ class CompletionProvider(ABC):
 
 
 class Reranker(ABC):
-    """Abstract adapter for query-document relevance scoring."""
+    """Separate reranking from retrieval so providers remain swappable."""
 
     @abstractmethod
     async def rerank_results(self, query: str, documents: list[str]) -> list[float]:
-        """Return one relevance score per document."""
+        """Allow recall to ask for relevance without knowing provider details.
+
+        Args:
+            query: User recall query.
+            documents: Candidate texts in original candidate order.
+
+        Returns:
+            One relevance score per document in the same order.
+        """
 
 
 class MemoryStoreProtocol(ABC):
@@ -70,6 +78,23 @@ class MemoryStoreProtocol(ABC):
         """Return lexical full-text-search candidates with relevance scores."""
 
     @abstractmethod
+    async def get_memories_by_ids(
+        self,
+        memory_ids: list[UUID],
+        *,
+        active_only: bool = True,
+    ) -> list[Memory]:
+        """Let graph expansion hydrate neighbors without exposing inactive rows.
+
+        Args:
+            memory_ids: IDs discovered outside direct retrieval.
+            active_only: Whether hidden/inactive memories should be excluded.
+
+        Returns:
+            Matching memory models.
+        """
+
+    @abstractmethod
     async def mark_accessed(self, memory_ids: list[UUID]) -> None:
         """Record that the recall path surfaced the selected memories."""
 
@@ -89,3 +114,22 @@ class GraphStoreProtocol(ABC):
     @abstractmethod
     async def reinforce_clique(self, memory_ids: list[UUID], increment: float = 1.0) -> None:
         """Strengthen pairwise associations among co-recalled memories."""
+
+    @abstractmethod
+    async def get_strong_neighbors(
+        self,
+        memory_ids: list[UUID],
+        *,
+        min_weight: float,
+        limit_per_source: int,
+    ) -> list[tuple[UUID, UUID, float]]:
+        """Expose graph context without coupling recall to edge storage details.
+
+        Args:
+            memory_ids: Primary memories anchoring the expansion.
+            min_weight: Minimum association strength to return.
+            limit_per_source: Per-anchor cap for spreading.
+
+        Returns:
+            Source ID, neighbor ID, and edge weight tuples.
+        """

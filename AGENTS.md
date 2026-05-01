@@ -31,3 +31,13 @@ Before committing Python changes, run:
 ```bash
 uv run ruff format .
 ```
+
+## Code Documentation
+
+Every new Python function and class must include a Google-style docstring. The
+docstring should explain why the code exists and the design constraint it
+protects, not just restate what the code does. Include `Args:` and `Returns:`
+sections when they clarify the contract.
+
+Add inline comments only where they explain non-obvious tradeoffs, invariants, or
+provider/database quirks that future maintainers would otherwise need to infer.

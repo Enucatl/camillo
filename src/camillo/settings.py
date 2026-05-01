@@ -1,11 +1,15 @@
 from functools import lru_cache
 
-from pydantic import Field
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    """Environment-backed application settings."""
+    """Centralize environment parsing so recall tuning is operationally safe.
+
+    The service needs Phase 2 behavior to be configurable without code changes,
+    while keeping validation close to the values that can break ranking.
+    """
 
     model_config = SettingsConfigDict(
         env_file=(".env.example", ".env"),
@@ -32,7 +36,41 @@ class Settings(BaseSettings):
     recall_top_k: int = Field(alias="RECALL_TOP_K")
     recall_vector_limit: int = Field(alias="RECALL_VECTOR_LIMIT")
     recall_full_text_search_limit: int = Field(alias="RECALL_FULL_TEXT_SEARCH_LIMIT")
+    rerank_enabled: bool = Field(default=True, alias="RERANK_ENABLED")
+    rerank_min_score: float = Field(default=0.35, alias="RERANK_MIN_SCORE")
+    rrf_k: int = Field(default=60, alias="RRF_K")
+    recall_candidate_limit: int = Field(default=30, alias="RECALL_CANDIDATE_LIMIT")
+    recall_relevance_weight: float = Field(default=0.7, alias="RECALL_RELEVANCE_WEIGHT")
+    recall_activation_weight: float = Field(default=0.3, alias="RECALL_ACTIVATION_WEIGHT")
+    diversity_enabled: bool = Field(default=True, alias="DIVERSITY_ENABLED")
+    diversity_similarity_threshold: float = Field(
+        default=0.92,
+        alias="DIVERSITY_SIMILARITY_THRESHOLD",
+    )
+    hebbian_spread_enabled: bool = Field(default=True, alias="HEBBIAN_SPREAD_ENABLED")
+    hebbian_spread_limit: int = Field(default=3, alias="HEBBIAN_SPREAD_LIMIT")
+    hebbian_max_depth: int = Field(default=1, alias="HEBBIAN_MAX_DEPTH")
     hebbian_edge_threshold: float = Field(alias="HEBBIAN_EDGE_THRESHOLD")
+    reinforcement_enabled: bool = Field(default=True, alias="REINFORCEMENT_ENABLED")
+    reinforcement_edge_increment: float = Field(
+        default=1.0,
+        alias="REINFORCEMENT_EDGE_INCREMENT",
+    )
+
+    @model_validator(mode="after")
+    def validate_recall_weights(self) -> "Settings":
+        """Prevent unusable ranking weights before the app starts.
+
+        Returns:
+            The validated settings instance for Pydantic's model pipeline.
+
+        Raises:
+            ValueError: If relevance and activation weights cannot be normalized.
+        """
+        total = self.recall_relevance_weight + self.recall_activation_weight
+        if total <= 0:
+            raise ValueError("Recall weights must sum to a positive value")
+        return self
 
 
 @lru_cache

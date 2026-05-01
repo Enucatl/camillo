@@ -1,3 +1,4 @@
+import litellm
 from litellm import acompletion, aembedding
 from loguru import logger
 
@@ -47,17 +48,61 @@ class LiteLLMService(CompletionProvider, EmbeddingProvider, Reranker):
         return [float(value) for value in embedding]
 
     async def rerank_results(self, query: str, documents: list[str]) -> list[float]:
-        """Rank candidate documents for a query.
+        """Use reranking as an optional relevance signal, not a hard dependency.
+
+        Recall should remain available when no rerank model is configured or a
+        provider returns a shape LiteLLM does not normalize consistently.
 
         Args:
             query: The recall query.
             documents: Candidate memory texts.
 
         Returns:
-            Placeholder relevance scores until Phase 2 wires a real reranker.
+            One relevance score per document, with order-preserving fallback.
         """
-        # TODO(Phase 2): route through LiteLLM reranking when the provider is configured.
         if not documents:
             return []
-        max_len = max(len(document) for document in documents) or 1
-        return [max(0.1, min(len(document) / max_len, 1.0)) for document in documents]
+
+        fallback = [1.0 - (index / max(len(documents), 1)) * 0.2 for index in range(len(documents))]
+        if not settings.litellm_rerank_model:
+            return fallback
+
+        try:
+            response = await litellm.arerank(
+                model=settings.litellm_rerank_model,
+                query=query,
+                documents=documents,
+            )
+            results = _response_value(response, "results") or []
+            scores = [0.0] * len(documents)
+
+            for item in results:
+                index = _response_value(item, "index")
+                score = _response_value(item, "relevance_score")
+                if score is None:
+                    score = _response_value(item, "score")
+                if index is None:
+                    continue
+                index = int(index)
+                if 0 <= index < len(scores):
+                    scores[index] = float(score or 0.0)
+
+            return scores
+        except Exception:
+            logger.exception("Failed to rerank recall candidates; using fallback")
+            return fallback
+
+
+def _response_value(item: object, key: str) -> object | None:
+    """Handle provider response shape drift behind one defensive accessor.
+
+    Args:
+        item: Dict-like or attribute-based LiteLLM response object.
+        key: Field name to read.
+
+    Returns:
+        The field value when present, otherwise `None`.
+    """
+    if isinstance(item, dict):
+        return item.get(key)
+    return getattr(item, key, None)

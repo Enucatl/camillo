@@ -52,6 +52,7 @@ FAKE_CONVERSATIONS = [
 
 @pytest.mark.asyncio
 async def test_fake_conversations_flow_through_ingest_recall_and_reinforcement() -> None:
+    """Protect the ingest-to-recall path across namespaces and session edges."""
     memory_store = FakeMemoryStore()
     graph_store = FakeGraphStore()
     llm_service = FakeLLMService(valence=0.82)
@@ -78,10 +79,10 @@ async def test_fake_conversations_flow_through_ingest_recall_and_reinforcement()
         top_k=3,
     )
 
-    assert any("teatro" in result["raw_content"] for result in teatro_results)
-    assert all(result["namespace"] == "repo:camillo" for result in teatro_results)
-    assert all("billing project" not in result["raw_content"] for result in teatro_results)
-    assert all(result["id"] in memory_store.marked_accessed for result in teatro_results)
+    assert any("teatro" in result.memory.raw_content for result in teatro_results)
+    assert all(result.memory.namespace == "repo:camillo" for result in teatro_results)
+    assert all("billing project" not in result.memory.raw_content for result in teatro_results)
+    assert all(result.memory.id in memory_store.marked_accessed for result in teatro_results)
 
     phoenix_results = await recall.recall(
         namespace="repo:camillo",
@@ -89,5 +90,5 @@ async def test_fake_conversations_flow_through_ingest_recall_and_reinforcement()
         top_k=2,
     )
 
-    assert any("Phoenix" in result["raw_content"] for result in phoenix_results)
+    assert any("Phoenix" in result.memory.raw_content for result in phoenix_results)
     assert any(memory.access_count > 0 for memory in memory_store.memories)

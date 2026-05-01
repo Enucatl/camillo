@@ -66,11 +66,24 @@ class MemoryStore(MemoryStoreProtocol):
         embedding: list[float],
         limit: int,
     ) -> list[tuple[Memory, float]]:
-        """Return nearest vector matches as similarity scores."""
+        """Use vector recall for semantic candidates within one namespace.
+
+        Args:
+            namespace: Partition that prevents cross-project recall.
+            embedding: Query embedding in the configured vector dimension.
+            limit: Maximum semantic candidates to return.
+
+        Returns:
+            Active memories with cosine-distance-derived similarity scores.
+        """
         distance = Memory.embedding.cosine_distance(embedding).label("distance")
         result = await self.db.execute(
             select(Memory, distance)
-            .where(Memory.namespace == namespace, Memory.status == "active")
+            .where(
+                Memory.namespace == namespace,
+                Memory.status == "active",
+                Memory.embedding.is_not(None),
+            )
             .order_by(text("distance"))
             .limit(limit)
         )
@@ -82,15 +95,71 @@ class MemoryStore(MemoryStoreProtocol):
         query: str,
         limit: int,
     ) -> list[tuple[Memory, float]]:
-        """Return lexical candidates using Postgres trigram similarity."""
+        """Use lexical recall to recover exact terms vector search may miss.
+
+        Args:
+            namespace: Partition that prevents cross-project recall.
+            query: Raw query text for trigram similarity.
+            limit: Maximum lexical candidates to return.
+
+        Returns:
+            Active memories with positive trigram similarity scores.
+        """
         similarity = func.similarity(Memory.raw_content, query).label("similarity")
         result = await self.db.execute(
             select(Memory, similarity)
-            .where(Memory.namespace == namespace, Memory.status == "active")
+            .where(
+                Memory.namespace == namespace,
+                Memory.status == "active",
+                similarity > 0.0,
+            )
             .order_by(desc(text("similarity")))
             .limit(limit)
         )
         return [(memory, float(score)) for memory, score in result.all()]
+
+    async def fts_candidates(
+        self,
+        namespace: str,
+        query: str,
+        limit: int,
+    ) -> list[tuple[Memory, float]]:
+        """Keep the shorter Phase 2 name available without duplicating logic.
+
+        Args:
+            namespace: Partition that prevents cross-project recall.
+            query: Raw query text for lexical matching.
+            limit: Maximum lexical candidates to return.
+
+        Returns:
+            The same candidates as `full_text_search_candidates`.
+        """
+        return await self.full_text_search_candidates(namespace, query, limit)
+
+    async def get_memories_by_ids(
+        self,
+        memory_ids: list[UUID],
+        *,
+        active_only: bool = True,
+    ) -> list[Memory]:
+        """Support graph expansion while preserving recall visibility rules.
+
+        Args:
+            memory_ids: IDs discovered from Hebbian edges.
+            active_only: Whether inactive memories should stay hidden.
+
+        Returns:
+            Matching memories, unordered by design because callers own ranking.
+        """
+        if not memory_ids:
+            return []
+
+        filters = [Memory.id.in_(memory_ids)]
+        if active_only:
+            filters.append(Memory.status == "active")
+
+        result = await self.db.execute(select(Memory).where(*filters))
+        return list(result.scalars().all())
 
     async def mark_accessed(self, memory_ids: list[UUID]) -> None:
         """Update recall bookkeeping for memories surfaced to a caller."""
