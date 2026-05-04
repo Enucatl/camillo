@@ -7,8 +7,8 @@ ENV PATH="/app/.venv/bin:$PATH"
 
 WORKDIR /app
 
-RUN groupadd --system camillo \
-    && useradd --system --gid camillo --home-dir /app --shell /usr/sbin/nologin camillo \
+RUN groupadd --gid 10000 camillo \
+    && useradd --uid 10000 --gid 10000 --home-dir /app --no-create-home --shell /usr/sbin/nologin camillo \
     && chown camillo:camillo /app
 
 USER camillo

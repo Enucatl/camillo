@@ -151,6 +151,8 @@ activemq-data/
 # Environments
 .env
 .envrc
+secrets/*
+!secrets/.gitkeep
 .venv
 env/
 venv/

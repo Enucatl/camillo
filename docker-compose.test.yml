@@ -4,7 +4,11 @@ x-camillo-test-env: &camillo-test-env
   APP_NAME: Camillo
   APP_ENV: test
   LOG_LEVEL: DEBUG
-  DATABASE_URL: postgresql+asyncpg://camillo_test:camillo_test@postgres-test:5432/camillo_test
+  POSTGRES_USER: camillo_test
+  POSTGRES_PASSWORD_FILE: /run/secrets/postgres_test_password
+  POSTGRES_DB: camillo_test
+  POSTGRES_HOST: postgres-test
+  POSTGRES_PORT: "5432"
   EMBEDDING_DIM: "1024"
   LITELLM_COMPLETION_MODEL: openrouter/google/gemma-4-31b-it:free
   LITELLM_EMBEDDING_MODEL: openrouter/baai/bge-m3
@@ -28,6 +32,8 @@ x-camillo-image: &camillo-image
     <<: *camillo-test-env
   tmpfs:
     - /tmp:rw,noexec,nosuid,mode=1777,size=64m
+  secrets:
+    - postgres_test_password
   networks:
     - test
 
@@ -39,8 +45,10 @@ services:
     image: pgvector/pgvector:pg18-trixie
     environment:
       POSTGRES_USER: camillo_test
-      POSTGRES_PASSWORD: camillo_test
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_test_password
       POSTGRES_DB: camillo_test
+    secrets:
+      - postgres_test_password
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U camillo_test -d camillo_test"]
       interval: 5s
@@ -101,3 +109,7 @@ services:
 networks:
   test:
     internal: true
+
+secrets:
+  postgres_test_password:
+    file: ./tests/secrets/postgres_test_password

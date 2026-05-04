@@ -1,7 +1,21 @@
 from functools import lru_cache
+from pathlib import Path
+from urllib.parse import quote
 
 from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+def _read_secret_file(path: str) -> str:
+    """Read a Docker secret without letting surrounding whitespace leak into config.
+
+    Args:
+        path: Absolute or relative path to the mounted secret file.
+
+    Returns:
+        The stripped secret value.
+    """
+    return Path(path).read_text(encoding="utf-8").strip()
 
 
 class Settings(BaseSettings):
@@ -20,7 +34,13 @@ class Settings(BaseSettings):
     app_name: str = Field(alias="APP_NAME")
     app_env: str = Field(alias="APP_ENV")
     log_level: str = Field(alias="LOG_LEVEL")
-    database_url: str = Field(alias="DATABASE_URL")
+    database_url: str = Field(default="", alias="DATABASE_URL")
+    postgres_user: str = Field(alias="POSTGRES_USER")
+    postgres_password: str | None = Field(default=None, alias="POSTGRES_PASSWORD")
+    postgres_password_file: str | None = Field(default=None, alias="POSTGRES_PASSWORD_FILE")
+    postgres_db: str = Field(alias="POSTGRES_DB")
+    postgres_host: str = Field(default="postgres", alias="POSTGRES_HOST")
+    postgres_port: int = Field(default=5432, alias="POSTGRES_PORT")
     embedding_dim: int = Field(alias="EMBEDDING_DIM")
     litellm_completion_model: str = Field(alias="LITELLM_COMPLETION_MODEL")
     litellm_embedding_model: str = Field(alias="LITELLM_EMBEDDING_MODEL")
@@ -58,7 +78,35 @@ class Settings(BaseSettings):
     )
 
     @model_validator(mode="after")
-    def validate_recall_weights(self) -> "Settings":
+    def build_database_url(self) -> Settings:
+        """Prefer secret-backed Postgres parts while preserving DATABASE_URL overrides.
+
+        Returns:
+            The settings instance with a usable SQLAlchemy URL.
+
+        Raises:
+            ValueError: If neither a full URL nor a Postgres password source is configured.
+        """
+        if self.database_url:
+            return self
+
+        password = self.postgres_password
+        if not password and self.postgres_password_file:
+            password = _read_secret_file(self.postgres_password_file)
+        if not password:
+            raise ValueError("DATABASE_URL or POSTGRES_PASSWORD_FILE must be configured")
+
+        user = quote(self.postgres_user, safe="")
+        escaped_password = quote(password, safe="")
+        database = quote(self.postgres_db, safe="")
+        self.database_url = (
+            f"postgresql+asyncpg://{user}:{escaped_password}"
+            f"@{self.postgres_host}:{self.postgres_port}/{database}"
+        )
+        return self
+
+    @model_validator(mode="after")
+    def validate_recall_weights(self) -> Settings:
         """Prevent unusable ranking weights before the app starts.
 
         Returns:

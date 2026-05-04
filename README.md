@@ -11,7 +11,9 @@ Development defaults route LiteLLM through OpenRouter:
 - rerank: `openrouter/cohere/rerank-4-pro`
 
 Set `OPENROUTER_API_KEY` in `.env` before calling `/ingest` or `/recall` with
-the default models. `/health` does not require an LLM key.
+the default models. Keep the database password in the Compose secret under
+`secrets/postgres_password`, not in `.env`. `/health` does not require an LLM
+key.
 
 Phase 1 includes:
 
@@ -26,6 +28,8 @@ Phase 1 includes:
 
 ```bash
 cp .env.example .env
+mkdir -p secrets
+printf 'change-me\n' > secrets/postgres_password
 docker compose up --build
 ```
 
@@ -103,7 +107,11 @@ Run the real PostgreSQL/pgvector integration tests against a migrated database:
 
 ```bash
 RUN_DB_TESTS=1 \
-DATABASE_URL=postgresql+asyncpg://camillo:camillo@localhost:5432/camillo \
+POSTGRES_USER=camillo \
+POSTGRES_PASSWORD_FILE=secrets/postgres_password \
+POSTGRES_DB=camillo \
+POSTGRES_HOST=localhost \
+POSTGRES_PORT=5432 \
 uv run --extra dev pytest tests/test_postgres_memory_flow.py
 ```
 

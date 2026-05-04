@@ -1,6 +1,7 @@
 import os
 import random
 import time
+from typing import ClassVar
 from uuid import uuid4
 
 import pytest
@@ -21,7 +22,7 @@ pytestmark = pytest.mark.integration
 class KeywordLLMService:
     """Make database integration assertions semantic without external providers."""
 
-    keywords = [
+    keywords: ClassVar[list[str]] = [
         "postgres",
         "pgvector",
         "database",

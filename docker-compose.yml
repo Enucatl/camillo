@@ -1,3 +1,21 @@
+x-camillo-env: &camillo-env
+  APP_NAME:
+  APP_ENV:
+  LOG_LEVEL:
+  POSTGRES_USER:
+  POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+  POSTGRES_DB:
+  POSTGRES_HOST:
+  POSTGRES_PORT:
+  EMBEDDING_DIM:
+  LITELLM_COMPLETION_MODEL:
+  LITELLM_EMBEDDING_MODEL:
+  DECAY_RATE:
+  RECALL_TOP_K:
+  RECALL_VECTOR_LIMIT:
+  RECALL_FULL_TEXT_SEARCH_LIMIT:
+  HEBBIAN_EDGE_THRESHOLD:
+
 services:
   postgres:
     extends:
@@ -6,8 +24,10 @@ services:
     image: pgvector/pgvector:pg18-trixie
     environment:
       POSTGRES_USER: camillo
-      POSTGRES_PASSWORD: camillo
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
       POSTGRES_DB: camillo
+    secrets:
+      - postgres_password
     ports:
       - "5432:5432"
     volumes:
@@ -24,8 +44,9 @@ services:
       service: hardened-medium
     build: .
     restart: "no"
-    env_file:
-      - .env.example
+    environment: *camillo-env
+    secrets:
+      - postgres_password
     command: ["alembic", "upgrade", "head"]
     tmpfs:
       - /tmp:rw,noexec,nosuid,size=64m
@@ -38,8 +59,9 @@ services:
       file: ../compose-security-baseline/hardening.yml
       service: hardened-large
     build: .
-    env_file:
-      - .env.example
+    environment: *camillo-env
+    secrets:
+      - postgres_password
     ports:
       - "8000:8000"
     tmpfs:
@@ -51,3 +73,7 @@ services:
 
 volumes:
   camillo_pg_data:
+
+secrets:
+  postgres_password:
+    file: ./secrets/postgres_password
