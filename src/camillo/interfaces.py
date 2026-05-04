@@ -50,6 +50,10 @@ class MemoryStoreProtocol(ABC):
         base_importance: float,
         session_id: str | None = None,
         metadata: dict[str, Any] | None = None,
+        *,
+        confidence: float | None = None,
+        source: str | None = None,
+        status: str = "active",
     ) -> Memory:
         """Persist a memory and return the database-backed model."""
 
@@ -97,6 +101,31 @@ class MemoryStoreProtocol(ABC):
     @abstractmethod
     async def mark_accessed(self, memory_ids: list[UUID]) -> None:
         """Record that the recall path surfaced the selected memories."""
+
+    @abstractmethod
+    async def update_memory_status(
+        self,
+        memory_id: UUID,
+        status: str,
+        *,
+        reason: str | None = None,
+        superseded_by: UUID | None = None,
+    ) -> Memory | None:
+        """Apply a lifecycle status transition to a memory."""
+
+    @abstractmethod
+    async def reinforce_memory(
+        self,
+        memory_id: UUID,
+        *,
+        increment_access: bool = True,
+        importance_boost: float = 0.05,
+    ) -> Memory | None:
+        """Strengthen an existing memory without duplicating it."""
+
+    @abstractmethod
+    async def memory_stats(self, namespace: str) -> dict[str, Any]:
+        """Return operational counts for a namespace."""
 
 
 class GraphStoreProtocol(ABC):

@@ -34,10 +34,10 @@ services:
       POSTGRES_DB: camillo
     secrets:
       - postgres_password
-    ports:
-      - "5432:5432"
     volumes:
       - camillo_pg_data:/var/lib/postgresql
+    networks:
+      - internal
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U camillo -d camillo"]
       interval: 5s
@@ -56,6 +56,8 @@ services:
     command: ["alembic", "upgrade", "head"]
     tmpfs:
       - /tmp:rw,noexec,nosuid,size=64m
+    networks:
+      - internal
     depends_on:
       postgres:
         condition: service_healthy
@@ -70,10 +72,21 @@ services:
       - postgres_password
       - camillo_fullchain
       - camillo_key
-    ports:
-      - "8000:8000"
     tmpfs:
       - /tmp:rw,noexec,nosuid,size=64m
+    labels:
+      - "checkmk_monitor=true"
+      - "traefik.enable=true"
+      - "traefik.docker.network=traefik_proxy"
+      - "traefik.http.routers.camillo.rule=Host(`camillo.${DOCKER_DOMAIN}`)"
+      - "traefik.http.routers.camillo.entrypoints=https"
+      - "traefik.http.routers.camillo.middlewares=secured@file"
+      - "traefik.http.routers.camillo.tls=true"
+      - "traefik.http.routers.camillo.service=camillo"
+      - "traefik.http.services.camillo.loadbalancer.server.port=8000"
+    networks:
+      - traefik_proxy
+      - internal
     depends_on:
       sipario:
         condition: service_completed_successfully
@@ -81,6 +94,12 @@ services:
 
 volumes:
   camillo_pg_data:
+
+networks:
+  internal:
+    internal: true
+  traefik_proxy:
+    external: true
 
 secrets:
   postgres_password:

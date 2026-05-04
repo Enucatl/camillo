@@ -32,6 +32,11 @@ class Memory(Base):
     embedding: Mapped[list[float]] = mapped_column(Vector(settings.embedding_dim))
     type: Mapped[str] = mapped_column(String(50), default="episodic")
     status: Mapped[str] = mapped_column(String(50), default="active")
+    confidence: Mapped[float] = mapped_column(Float, default=0.8)
+    source: Mapped[str | None] = mapped_column(Text, nullable=True)
+    superseded_by: Mapped[UUID | None] = mapped_column(ForeignKey("memories.id"), nullable=True)
+    deprecated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    status_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
     base_importance: Mapped[float] = mapped_column(Float, default=0.5)
     access_count: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
@@ -46,6 +51,16 @@ class Memory(Base):
     incoming_edges: Mapped[list[HebbianEdge]] = relationship(
         back_populates="target",
         foreign_keys="HebbianEdge.target_id",
+        cascade="all, delete-orphan",
+    )
+    outgoing_relations: Mapped[list[MemoryRelation]] = relationship(
+        back_populates="source",
+        foreign_keys="MemoryRelation.source_id",
+        cascade="all, delete-orphan",
+    )
+    incoming_relations: Mapped[list[MemoryRelation]] = relationship(
+        back_populates="target",
+        foreign_keys="MemoryRelation.target_id",
         cascade="all, delete-orphan",
     )
 
@@ -72,3 +87,39 @@ class HebbianEdge(Base):
 
     source: Mapped[Memory] = relationship(foreign_keys=[source_id], back_populates="outgoing_edges")
     target: Mapped[Memory] = relationship(foreign_keys=[target_id], back_populates="incoming_edges")
+
+
+class MemoryRelation(Base):
+    """Semantic or lifecycle relationship between two memories.
+
+    Relations are separate from Hebbian edges so associative strength and belief
+    reconciliation can evolve without conflating their meanings.
+    """
+
+    __tablename__ = "memory_relations"
+    __table_args__ = (
+        UniqueConstraint(
+            "source_id",
+            "target_id",
+            "relation_type",
+            name="uq_memory_relations_source_target_type",
+        ),
+    )
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    source_id: Mapped[UUID] = mapped_column(ForeignKey("memories.id", ondelete="CASCADE"))
+    target_id: Mapped[UUID] = mapped_column(ForeignKey("memories.id", ondelete="CASCADE"))
+    relation_type: Mapped[str] = mapped_column(String(50))
+    confidence: Mapped[float] = mapped_column(Float, default=0.8)
+    rationale: Mapped[str | None] = mapped_column(Text, nullable=True)
+    metadata_json: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+
+    source: Mapped[Memory] = relationship(
+        foreign_keys=[source_id],
+        back_populates="outgoing_relations",
+    )
+    target: Mapped[Memory] = relationship(
+        foreign_keys=[target_id],
+        back_populates="incoming_relations",
+    )

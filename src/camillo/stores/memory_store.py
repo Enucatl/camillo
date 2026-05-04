@@ -29,6 +29,10 @@ class MemoryStore(MemoryStoreProtocol):
         base_importance: float,
         session_id: str | None = None,
         metadata: dict[str, Any] | None = None,
+        *,
+        confidence: float | None = None,
+        source: str | None = None,
+        status: str = "active",
     ) -> Memory:
         """Insert a memory without committing the surrounding transaction."""
         memory = Memory(
@@ -39,6 +43,9 @@ class MemoryStore(MemoryStoreProtocol):
             base_importance=base_importance,
             session_id=session_id,
             metadata_json=metadata or {},
+            confidence=confidence if confidence is not None else 0.8,
+            source=source,
+            status=status,
         )
         self.db.add(memory)
         await self.db.flush()
@@ -173,3 +180,93 @@ class MemoryStore(MemoryStoreProtocol):
                 last_accessed_at=datetime.now(UTC),
             )
         )
+
+    async def update_memory_status(
+        self,
+        memory_id: UUID,
+        status: str,
+        *,
+        reason: str | None = None,
+        superseded_by: UUID | None = None,
+    ) -> Memory | None:
+        """Apply lifecycle changes while reducing inactive memory strength.
+
+        Args:
+            memory_id: Memory row to update.
+            status: Lifecycle status chosen by reconciliation.
+            reason: Optional human-readable reason for auditability.
+            superseded_by: Replacement memory when `status` is superseded.
+
+        Returns:
+            The updated memory when it exists, otherwise `None`.
+        """
+        memory = await self.db.get(Memory, memory_id)
+        if memory is None:
+            return None
+
+        memory.status = status
+        memory.status_reason = reason
+        if status in {"deprecated", "superseded"}:
+            memory.deprecated_at = datetime.now(UTC)
+            memory.base_importance = min(memory.base_importance, 0.2)
+        if superseded_by is not None:
+            memory.superseded_by = superseded_by
+        await self.db.flush()
+        return memory
+
+    async def reinforce_memory(
+        self,
+        memory_id: UUID,
+        *,
+        increment_access: bool = True,
+        importance_boost: float = 0.05,
+    ) -> Memory | None:
+        """Strengthen a known memory instead of creating a duplicate.
+
+        Args:
+            memory_id: Existing memory to reinforce.
+            increment_access: Whether to increment recall-like access count.
+            importance_boost: Bounded increase in base importance.
+
+        Returns:
+            The updated memory when it exists, otherwise `None`.
+        """
+        memory = await self.db.get(Memory, memory_id)
+        if memory is None:
+            return None
+
+        if increment_access:
+            memory.access_count += 1
+        memory.base_importance = min(memory.base_importance + importance_boost, 1.0)
+        memory.last_accessed_at = datetime.now(UTC)
+        await self.db.flush()
+        return memory
+
+    async def memory_stats(self, namespace: str) -> dict[str, Any]:
+        """Return operational memory counts for one namespace.
+
+        Args:
+            namespace: Partition whose memories should be counted.
+
+        Returns:
+            Total, type counts, and status counts in a JSON-serializable dict.
+        """
+        total = await self.db.scalar(
+            select(func.count()).select_from(Memory).where(Memory.namespace == namespace)
+        )
+        by_type_rows = await self.db.execute(
+            select(Memory.type, func.count())
+            .where(Memory.namespace == namespace)
+            .group_by(Memory.type)
+        )
+        by_status_rows = await self.db.execute(
+            select(Memory.status, func.count())
+            .where(Memory.namespace == namespace)
+            .group_by(Memory.status)
+        )
+        return {
+            "namespace": namespace,
+            "total": int(total or 0),
+            "by_type": {memory_type: count for memory_type, count in by_type_rows.all()},
+            "by_status": {status: count for status, count in by_status_rows.all()},
+        }

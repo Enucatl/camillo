@@ -61,6 +61,7 @@ def make_memory(
     session_id: str | None = None,
     embedding: list[float] | None = None,
     base_importance: float = 0.5,
+    memory_type: str = "episodic",
 ) -> Memory:
     """Create model-shaped memories so tests cover real service contracts.
 
@@ -70,6 +71,7 @@ def make_memory(
         session_id: Optional conversation/session grouping.
         embedding: Optional explicit vector for ranking tests.
         base_importance: ACT-R base importance value.
+        memory_type: Memory category to assign.
 
     Returns:
         An unsaved `Memory` instance with active status.
@@ -81,8 +83,13 @@ def make_memory(
         session_id=session_id,
         raw_content=raw_content,
         embedding=embedding or synthetic_embedding(raw_content),
-        type="episodic",
+        type=memory_type,
         status="active",
+        confidence=0.8,
+        source=None,
+        superseded_by=None,
+        deprecated_at=None,
+        status_reason=None,
         base_importance=base_importance,
         access_count=0,
         created_at=now,
@@ -106,6 +113,7 @@ class FakeLLMService:
         self.scored: list[str] = []
         self.embedded: list[str] = []
         self.reranked: list[tuple[str, list[str]]] = []
+        self.classifications: list[Any] | None = None
 
     async def score_valence(self, raw_content: str) -> float:
         """Avoid provider calls while still verifying ingestion wiring.
@@ -145,6 +153,36 @@ class FakeLLMService:
         terms = tokenize(query)
         return [len(terms & tokenize(document)) / max(len(terms), 1) for document in documents]
 
+    async def classify_memory_relationships(
+        self,
+        intent: str,
+        new_content: str,
+        existing_memories: list[Memory],
+    ) -> list[Any]:
+        """Return caller-configured relationship judgments for reconciliation tests.
+
+        Args:
+            intent: Submission intent.
+            new_content: Candidate durable memory.
+            existing_memories: Related active memories.
+
+        Returns:
+            Preconfigured classifications or unrelated fallbacks.
+        """
+        if self.classifications is not None:
+            return self.classifications
+        from camillo.schemas.submit_memory import MemoryRelationshipClassification
+
+        return [
+            MemoryRelationshipClassification(
+                index=index,
+                relation="unrelated",
+                confidence=0.0,
+                rationale="classification unavailable",
+            )
+            for index, _memory in enumerate(existing_memories)
+        ]
+
 
 class FakeMemoryStore:
     """Keep store tests in memory while preserving production method semantics."""
@@ -167,6 +205,10 @@ class FakeMemoryStore:
         base_importance: float,
         session_id: str | None = None,
         metadata: dict[str, Any] | None = None,
+        *,
+        confidence: float | None = None,
+        source: str | None = None,
+        status: str = "active",
     ) -> Memory:
         """Append memories so ingestion tests can observe persistence effects.
 
@@ -188,8 +230,11 @@ class FakeMemoryStore:
             session_id=session_id,
             embedding=embedding,
             base_importance=base_importance,
+            memory_type=memory_type,
         )
-        memory.type = memory_type
+        memory.status = status
+        memory.confidence = confidence if confidence is not None else 0.8
+        memory.source = source
         memory.metadata_json = metadata or {}
         self.memories.append(memory)
         return memory
@@ -300,6 +345,87 @@ class FakeMemoryStore:
             if memory.id in memory_ids:
                 memory.access_count += 1
                 memory.last_accessed_at = datetime.now(UTC)
+
+    async def update_memory_status(
+        self,
+        memory_id: UUID,
+        status: str,
+        *,
+        reason: str | None = None,
+        superseded_by: UUID | None = None,
+    ) -> Memory | None:
+        """Apply fake lifecycle updates for reconciliation tests.
+
+        Args:
+            memory_id: Memory to update.
+            status: New lifecycle status.
+            reason: Optional status reason.
+            superseded_by: Replacement memory id when applicable.
+
+        Returns:
+            Updated fake memory or `None`.
+        """
+        for memory in self.memories:
+            if memory.id != memory_id:
+                continue
+            memory.status = status
+            memory.status_reason = reason
+            if status in {"deprecated", "superseded"}:
+                memory.deprecated_at = datetime.now(UTC)
+                memory.base_importance = min(memory.base_importance, 0.2)
+            if superseded_by is not None:
+                memory.superseded_by = superseded_by
+            return memory
+        return None
+
+    async def reinforce_memory(
+        self,
+        memory_id: UUID,
+        *,
+        increment_access: bool = True,
+        importance_boost: float = 0.05,
+    ) -> Memory | None:
+        """Strengthen fake memories when reconciliation avoids duplicates.
+
+        Args:
+            memory_id: Memory to reinforce.
+            increment_access: Whether access count should increase.
+            importance_boost: Importance increment.
+
+        Returns:
+            Updated fake memory or `None`.
+        """
+        for memory in self.memories:
+            if memory.id != memory_id:
+                continue
+            if increment_access:
+                memory.access_count += 1
+            memory.base_importance = min(memory.base_importance + importance_boost, 1.0)
+            memory.last_accessed_at = datetime.now(UTC)
+            return memory
+        return None
+
+    async def memory_stats(self, namespace: str) -> dict[str, Any]:
+        """Count fake memories using production response shape.
+
+        Args:
+            namespace: Partition to count.
+
+        Returns:
+            Namespace stats.
+        """
+        matches = [memory for memory in self.memories if memory.namespace == namespace]
+        by_type: dict[str, int] = {}
+        by_status: dict[str, int] = {}
+        for memory in matches:
+            by_type[memory.type] = by_type.get(memory.type, 0) + 1
+            by_status[memory.status] = by_status.get(memory.status, 0) + 1
+        return {
+            "namespace": namespace,
+            "total": len(matches),
+            "by_type": by_type,
+            "by_status": by_status,
+        }
 
 
 class FakeGraphStore:
