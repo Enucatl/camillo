@@ -124,9 +124,10 @@ self-hosted Phoenix instance:
 
 ```bash
 PHOENIX_TRACING_ENABLED=true
-PHOENIX_COLLECTOR_ENDPOINT=http://phoenix.docker.home.arpa:6006
+PHOENIX_COLLECTOR_ENDPOINT=https://phoenix-otlp.${DOCKER_DOMAIN}/v1/traces
 PHOENIX_PROJECT_NAME=camillo
 ```
 
-The Docker image installs the tracing extra, so enabling these variables is
-enough for the `teatro` service.
+The Docker image installs the tracing extra. The `teatro` service also mounts
+`secrets/fullchain.pem` and `secrets/key.pem` as the OTLP client certificate and
+key, matching the mTLS setup used by the Airflow worker.

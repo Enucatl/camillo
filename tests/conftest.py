@@ -14,7 +14,9 @@ os.environ.setdefault("LITELLM_EMBEDDING_MODEL", "openrouter/baai/bge-m3")
 os.environ.setdefault("LITELLM_RERANK_MODEL", "openrouter/cohere/rerank-4-pro")
 os.environ.setdefault("OPENROUTER_API_KEY", "")
 os.environ.setdefault("PHOENIX_TRACING_ENABLED", "false")
-os.environ.setdefault("PHOENIX_COLLECTOR_ENDPOINT", "http://phoenix.docker.home.arpa:6006")
+os.environ.setdefault(
+    "PHOENIX_COLLECTOR_ENDPOINT", "https://phoenix-otlp.docker.home.arpa/v1/traces"
+)
 os.environ.setdefault("PHOENIX_PROJECT_NAME", "camillo-test")
 os.environ.setdefault("DECAY_RATE", "0.01")
 os.environ.setdefault("RECALL_TOP_K", "5")

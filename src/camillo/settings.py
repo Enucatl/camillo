@@ -48,7 +48,7 @@ class Settings(BaseSettings):
     openrouter_api_key: str | None = Field(default=None, alias="OPENROUTER_API_KEY")
     phoenix_tracing_enabled: bool = Field(default=False, alias="PHOENIX_TRACING_ENABLED")
     phoenix_collector_endpoint: str = Field(
-        default="http://phoenix.docker.home.arpa:6006",
+        default="https://phoenix-otlp.docker.home.arpa/v1/traces",
         alias="PHOENIX_COLLECTOR_ENDPOINT",
     )
     phoenix_project_name: str = Field(default="camillo", alias="PHOENIX_PROJECT_NAME")

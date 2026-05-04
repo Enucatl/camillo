@@ -27,7 +27,7 @@ def _settings_kwargs(**overrides: str | None) -> dict[str, str | None]:
         "LITELLM_RERANK_MODEL": "openrouter/cohere/rerank-4-pro",
         "OPENROUTER_API_KEY": "",
         "PHOENIX_TRACING_ENABLED": "false",
-        "PHOENIX_COLLECTOR_ENDPOINT": "http://phoenix.docker.home.arpa:6006",
+        "PHOENIX_COLLECTOR_ENDPOINT": "https://phoenix-otlp.docker.home.arpa/v1/traces",
         "PHOENIX_PROJECT_NAME": "camillo-test",
         "DECAY_RATE": "0.01",
         "RECALL_TOP_K": "5",

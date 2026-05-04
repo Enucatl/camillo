@@ -10,6 +10,12 @@ x-camillo-env: &camillo-env
   EMBEDDING_DIM:
   LITELLM_COMPLETION_MODEL:
   LITELLM_EMBEDDING_MODEL:
+  PHOENIX_TRACING_ENABLED:
+  PHOENIX_COLLECTOR_ENDPOINT: ${PHOENIX_COLLECTOR_ENDPOINT:-https://phoenix-otlp.${DOCKER_DOMAIN}/v1/traces}
+  PHOENIX_PROJECT_NAME: ${PHOENIX_PROJECT_NAME:-camillo}
+  OTEL_EXPORTER_OTLP_TRACES_CERTIFICATE: /etc/ssl/certs/ca-certificates.crt
+  OTEL_EXPORTER_OTLP_TRACES_CLIENT_CERTIFICATE: /run/secrets/camillo_fullchain
+  OTEL_EXPORTER_OTLP_TRACES_CLIENT_KEY: /run/secrets/camillo_key
   DECAY_RATE:
   RECALL_TOP_K:
   RECALL_VECTOR_LIMIT:
@@ -62,6 +68,8 @@ services:
     environment: *camillo-env
     secrets:
       - postgres_password
+      - camillo_fullchain
+      - camillo_key
     ports:
       - "8000:8000"
     tmpfs:
@@ -77,3 +85,7 @@ volumes:
 secrets:
   postgres_password:
     file: ./secrets/postgres_password
+  camillo_fullchain:
+    file: ./secrets/fullchain.pem
+  camillo_key:
+    file: ./secrets/key.pem
