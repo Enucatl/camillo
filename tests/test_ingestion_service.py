@@ -25,6 +25,7 @@ async def test_ingest_interaction_stores_raw_episodic_memory() -> None:
     assert "User:\nUse Postgres with pgvector." in memory.raw_content
     assert "Assistant:\nI will remember" in memory.raw_content
     assert len(memory.embedding) == 32
+    assert memory_store.memories[0].raw_content.startswith("User:\nUse Postgres with pgvector.")
 
 
 @pytest.mark.asyncio

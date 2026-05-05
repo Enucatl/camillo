@@ -56,16 +56,17 @@ class KeywordLLMService:
         self.scored: list[str] = []
         self.embedded: list[str] = []
 
-    async def score_valence(self, raw_content: str) -> float:
+    async def score_valence(self, user_msg: str, ai_msg: str) -> float:
         """Avoid remote completion calls while still exercising ingestion.
 
         Args:
-            raw_content: Memory text that would be scored by the LLM.
+            user_msg: User-side turn content.
+            ai_msg: Assistant-side turn content.
 
         Returns:
             The configured deterministic valence score.
         """
-        self.scored.append(raw_content)
+        self.scored.append(f"User:\n{user_msg}\n\nAssistant:\n{ai_msg}")
         return self.valence
 
     async def get_embedding(self, text: str) -> list[float]:

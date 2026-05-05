@@ -18,17 +18,23 @@ def _template_environment() -> Environment:
     )
 
 
-def render_valence_prompt(raw_content: str) -> str:
+def render_valence_prompt(user_msg: str, ai_msg: str) -> str:
     """Render the memory-importance scoring prompt.
 
     Args:
-        raw_content: The interaction text to score.
+        user_msg: The user turn to score.
+        ai_msg: The assistant turn to score.
 
     Returns:
         A LiteLLM-ready prompt that asks for a continuous importance score.
     """
     return (
-        _template_environment().get_template("valence_score.jinja").render(raw_content=raw_content)
+        _template_environment()
+        .get_template("valence_score.jinja")
+        .render(
+            user_msg=user_msg,
+            ai_msg=ai_msg,
+        )
     )
 
 

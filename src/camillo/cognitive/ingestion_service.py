@@ -40,7 +40,7 @@ class IngestionService:
             The inserted memory model.
         """
         raw_content = f"User:\n{user_msg}\n\nAssistant:\n{ai_msg}"
-        base_importance = await self.llm_service.score_valence(raw_content)
+        base_importance = await self.llm_service.score_valence(user_msg, ai_msg)
         embedding = await self.llm_service.get_embedding(raw_content)
         previous_memory = None
         if session_id is not None:

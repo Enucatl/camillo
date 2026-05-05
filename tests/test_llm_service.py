@@ -17,7 +17,7 @@ async def test_score_valence_parses_float(monkeypatch: pytest.MonkeyPatch) -> No
 
     monkeypatch.setattr(llm_service.litellm, "acompletion", fake_acompletion)
 
-    assert await LiteLLMService().score_valence("important") == 0.82
+    assert await LiteLLMService().score_valence("important", "relevant") == 0.82
 
 
 @pytest.mark.asyncio
@@ -31,7 +31,7 @@ async def test_score_valence_falls_back_on_parse_failure(monkeypatch: pytest.Mon
 
     monkeypatch.setattr(llm_service.litellm, "acompletion", fake_acompletion)
 
-    assert await LiteLLMService().score_valence("temporary chatter") == 0.5
+    assert await LiteLLMService().score_valence("temporary chatter", "fine") == 0.5
 
 
 @pytest.mark.asyncio

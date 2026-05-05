@@ -17,7 +17,7 @@ class CompletionProvider(ABC):
     """Abstract adapter for LLM completion behavior used by cognition services."""
 
     @abstractmethod
-    async def score_valence(self, raw_content: str) -> float:
+    async def score_valence(self, user_msg: str, ai_msg: str) -> float:
         """Score long-term memory importance on a continuous 0.0-1.0 scale."""
 
 

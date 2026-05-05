@@ -13,11 +13,12 @@ from camillo.settings import settings
 class LiteLLMService(CompletionProvider, EmbeddingProvider, Reranker):
     """LiteLLM-backed implementation of the AI provider interfaces."""
 
-    async def score_valence(self, raw_content: str) -> float:
+    async def score_valence(self, user_msg: str, ai_msg: str) -> float:
         """Score whether an interaction is worth retaining long-term.
 
         Args:
-            raw_content: The conversation content to classify.
+            user_msg: The user-side turn content to classify.
+            ai_msg: The assistant-side turn content to classify.
 
         Returns:
             A clamped continuous score from 0.0 to 1.0, with 0.5 as a neutral
@@ -26,7 +27,12 @@ class LiteLLMService(CompletionProvider, EmbeddingProvider, Reranker):
         try:
             response = await litellm.acompletion(
                 model=settings.litellm_completion_model,
-                messages=[{"role": "user", "content": render_valence_prompt(raw_content)}],
+                messages=[
+                    {
+                        "role": "user",
+                        "content": render_valence_prompt(user_msg, ai_msg),
+                    }
+                ],
                 temperature=0,
             )
             content = response.choices[0].message.content or ""
