@@ -1,10 +1,11 @@
 import os
 import sys
-from typing import Any
+from typing import Annotated, Any
 
 try:
     from mcp.server.fastmcp import FastMCP
     from mcp.server.fastmcp.server import TransportSecuritySettings
+    from mcp.types import ToolAnnotations
 except ImportError:  # pragma: no cover - exercised only before dependency install
 
     class FastMCP:  # type: ignore[no-redef]
@@ -27,17 +28,152 @@ except ImportError:  # pragma: no cover - exercised only before dependency insta
         def __init__(self, **_kwargs: Any):
             """Accept the FastMCP transport security settings shape."""
 
+    class ToolAnnotations:  # type: ignore[no-redef]
+        """Minimal fallback preserving import-time tool annotation shape."""
+
+        def __init__(self, **_kwargs: Any):
+            """Accept the MCP tool annotation settings shape."""
+
+
+from pydantic import Field
 
 from camillo.ai.llm_service import LiteLLMService
 from camillo.cognitive.ingestion_service import IngestionService
 from camillo.cognitive.recall_service import RecallService
 from camillo.cognitive.reconciliation_service import MemoryReconciliationService
 from camillo.db.session import AsyncSessionLocal
-from camillo.schemas.recall import RecalledMemory, ScoreBreakdown
+from camillo.schemas.ingest import IngestResponse
+from camillo.schemas.memory import McpRecalledMemory, McpRecallResponse, MemoryStatsResponse
+from camillo.schemas.recall import ScoreBreakdown
+from camillo.schemas.submit_memory import DurableMemoryType, MemoryIntent, MemorySubmissionReport
 from camillo.settings import settings
 from camillo.stores.graph_store import GraphStore
 from camillo.stores.memory_store import MemoryStore
 from camillo.stores.relation_store import RelationStore
+
+NamespaceArg = Annotated[
+    str,
+    Field(
+        min_length=1,
+        description=(
+            "Logical memory partition to read or write. Use a stable project, workspace, "
+            "tenant, or user namespace to prevent unrelated memories from mixing."
+        ),
+    ),
+]
+
+RecallQueryArg = Annotated[
+    str,
+    Field(
+        min_length=1,
+        description=(
+            "Natural-language retrieval query. Include the concrete topic, project, "
+            "constraint, or preference you want Camillo to recover."
+        ),
+    ),
+]
+
+TopKArg = Annotated[
+    int | None,
+    Field(
+        default=None,
+        ge=1,
+        description=(
+            "Maximum number of primary direct matches to return. Omit to use the server default."
+        ),
+    ),
+]
+
+IncludeHebbianArg = Annotated[
+    bool,
+    Field(
+        default=True,
+        description=(
+            "Whether to append graph-associated memories after the primary matches. "
+            "Disable for strict direct retrieval."
+        ),
+    ),
+]
+
+UserMessageArg = Annotated[
+    str,
+    Field(
+        min_length=1,
+        description="User-side content from the conversation turn to store as episodic memory.",
+    ),
+]
+
+AssistantMessageArg = Annotated[
+    str,
+    Field(
+        min_length=1,
+        description="Assistant-side content from the same conversation turn.",
+    ),
+]
+
+SessionIdArg = Annotated[
+    str | None,
+    Field(
+        default=None,
+        description=(
+            "Optional stable conversation or task identifier. Turns with the same session "
+            "are linked in the memory graph."
+        ),
+    ),
+]
+
+MemoryContentArg = Annotated[
+    str,
+    Field(
+        min_length=1,
+        description=(
+            "Durable memory candidate to reconcile, such as a user preference, project "
+            "constraint, correction, procedure, or profile fact."
+        ),
+    ),
+]
+
+EvidenceArg = Annotated[
+    str | None,
+    Field(
+        default=None,
+        description=(
+            "Optional source text or rationale supporting the memory. Stored as metadata "
+            "for auditability."
+        ),
+    ),
+]
+
+ConfidenceArg = Annotated[
+    float | None,
+    Field(
+        default=None,
+        ge=0.0,
+        le=1.0,
+        description="Optional caller confidence. Omit to let Camillo use its default.",
+    ),
+]
+
+READ_ONLY_ANNOTATIONS = ToolAnnotations(
+    readOnlyHint=True,
+    destructiveHint=False,
+    idempotentHint=True,
+    openWorldHint=False,
+)
+
+WRITE_ANNOTATIONS = ToolAnnotations(
+    readOnlyHint=False,
+    destructiveHint=False,
+    idempotentHint=False,
+    openWorldHint=False,
+)
+
+RECONCILE_ANNOTATIONS = ToolAnnotations(
+    readOnlyHint=False,
+    destructiveHint=True,
+    idempotentHint=False,
+    openWorldHint=False,
+)
 
 
 def _mcp_allowed_hosts() -> list[str]:
@@ -89,13 +225,33 @@ mcp = FastMCP(
 )
 
 
-@mcp.tool()
+@mcp.tool(
+    title="Recall Active Memories",
+    description=(
+        "Retrieve relevant active memories from one namespace for a concrete query. "
+        "Use this before answering when prior project context, user preferences, or "
+        "operational constraints may affect the response."
+    ),
+    annotations=READ_ONLY_ANNOTATIONS,
+    meta={
+        "when_to_use": [
+            "Before answering a question that may depend on prior user or project context.",
+            "When a task references a project, preference, constraint, decision, or past instruction.",
+        ],
+        "when_not_to_use": [
+            "For storing new information; use record_interaction or submit_memory instead.",
+            "For global search across unrelated namespaces.",
+        ],
+        "side_effects": [],
+        "returns": "query, namespace, and ranked memories with score provenance.",
+    },
+)
 async def recall_memory(
-    query: str,
-    namespace: str,
-    top_k: int | None = None,
-    include_hebbian: bool = True,
-) -> dict[str, Any]:
+    query: RecallQueryArg,
+    namespace: NamespaceArg,
+    top_k: TopKArg = None,
+    include_hebbian: IncludeHebbianArg = True,
+) -> McpRecallResponse:
     """Recall relevant active memories through the Phase 2 pipeline."""
     async with AsyncSessionLocal() as db:
         try:
@@ -110,17 +266,16 @@ async def recall_memory(
                 include_hebbian=include_hebbian,
             )
             await db.commit()
-            return {
-                "query": query,
-                "namespace": namespace,
-                "memories": [
-                    RecalledMemory(
+            return McpRecallResponse(
+                query=query,
+                namespace=namespace,
+                memories=[
+                    McpRecalledMemory(
                         id=candidate.memory.id,
                         namespace=candidate.memory.namespace,
                         raw_content=candidate.memory.raw_content,
                         type=candidate.memory.type,
                         base_importance=candidate.memory.base_importance,
-                        access_count=candidate.memory.access_count,
                         score=candidate.final_score or 0.0,
                         source=candidate.source,
                         linked_from=candidate.linked_from,
@@ -134,22 +289,45 @@ async def recall_memory(
                             text_score=candidate.text_score,
                             rrf_score=candidate.rrf_score,
                         ),
-                    ).model_dump(mode="json")
+                    )
                     for candidate in candidates
                 ],
-            }
+            )
         except Exception:
             await db.rollback()
             raise
 
 
-@mcp.tool()
+@mcp.tool(
+    title="Record Interaction",
+    description=(
+        "Store one user/assistant conversation turn as episodic memory. Use this for "
+        "raw interaction history that may become useful later; Camillo scores the turn, "
+        "embeds it, and links adjacent turns that share a session_id."
+    ),
+    annotations=WRITE_ANNOTATIONS,
+    meta={
+        "when_to_use": [
+            "After a meaningful exchange that should be available for future recall.",
+            "When preserving both user wording and assistant response matters.",
+        ],
+        "when_not_to_use": [
+            "For concise durable facts or corrections; use submit_memory instead.",
+            "For read-only lookup; use recall_memory or memory_stats.",
+        ],
+        "side_effects": [
+            "Creates an episodic memory row.",
+            "May create or strengthen a session adjacency edge.",
+        ],
+        "returns": "created memory id, namespace, memory type, and computed importance score.",
+    },
+)
 async def record_interaction(
-    namespace: str,
-    user_msg: str,
-    ai_msg: str,
-    session_id: str | None = None,
-) -> dict[str, Any]:
+    namespace: NamespaceArg,
+    user_msg: UserMessageArg,
+    ai_msg: AssistantMessageArg,
+    session_id: SessionIdArg = None,
+) -> IngestResponse:
     """Record a raw user/assistant exchange as episodic memory."""
     async with AsyncSessionLocal() as db:
         try:
@@ -159,26 +337,60 @@ async def record_interaction(
             service = IngestionService(memory_store, graph_store, llm_service)
             memory = await service.ingest_interaction(namespace, user_msg, ai_msg, session_id)
             await db.commit()
-            return {
-                "memory_id": str(memory.id),
-                "namespace": memory.namespace,
-                "type": memory.type,
-                "base_importance": memory.base_importance,
-            }
+            return IngestResponse(
+                memory_id=memory.id,
+                namespace=memory.namespace,
+                type=memory.type,
+                base_importance=memory.base_importance,
+            )
         except Exception:
             await db.rollback()
             raise
 
 
-@mcp.tool()
+@mcp.tool(
+    title="Submit Durable Memory",
+    description=(
+        "Reconcile a durable memory candidate against related active memories. Use this "
+        "for explicit preferences, corrections, procedures, project constraints, profile "
+        "facts, or forget requests. Camillo detects duplicates and contextual conflicts "
+        "before creating, reinforcing, superseding, or deprecating memories."
+    ),
+    annotations=RECONCILE_ANNOTATIONS,
+    meta={
+        "when_to_use": [
+            "When the user asks to remember, correct, forget, or preserve a durable fact.",
+            "When a compact semantic memory is better than storing the whole conversation turn.",
+        ],
+        "when_not_to_use": [
+            "For raw conversation logging; use record_interaction.",
+            "For retrieval without mutation; use recall_memory or memory_stats.",
+        ],
+        "side_effects": [
+            "May create a durable memory.",
+            "May reinforce, supersede, or deprecate related active memories.",
+            "May create semantic relation rows between memories.",
+        ],
+        "valid_intents": ["auto", "remember", "correct", "forget"],
+        "valid_memory_types": [
+            "semantic",
+            "preference",
+            "procedural",
+            "relationship",
+            "profile",
+            "core",
+        ],
+        "returns": "transparent reconciliation report with outcome, affected ids, and relations.",
+    },
+)
 async def submit_memory(
-    namespace: str,
-    content: str,
-    intent: str = "auto",
-    memory_type: str | None = None,
-    evidence: str | None = None,
-    confidence: float | None = None,
-) -> dict[str, Any]:
+    namespace: NamespaceArg,
+    content: MemoryContentArg,
+    intent: MemoryIntent = "auto",
+    memory_type: DurableMemoryType | None = None,
+    evidence: EvidenceArg = None,
+    confidence: ConfidenceArg = None,
+) -> MemorySubmissionReport:
     """Submit durable memory through reconciliation policy."""
     async with AsyncSessionLocal() as db:
         try:
@@ -202,21 +414,41 @@ async def submit_memory(
                 confidence=confidence,
             )
             await db.commit()
-            return report.model_dump(mode="json")
+            return report
         except Exception:
             await db.rollback()
             raise
 
 
-@mcp.tool()
-async def memory_stats(namespace: str) -> dict[str, Any]:
+@mcp.tool(
+    title="Memory Stats",
+    description=(
+        "Return operational memory counts for one namespace. Use this to inspect whether "
+        "a namespace has active, deprecated, superseded, episodic, or durable memories "
+        "before deciding whether to recall or write memory."
+    ),
+    annotations=READ_ONLY_ANNOTATIONS,
+    meta={
+        "when_to_use": [
+            "Before diagnosing whether a namespace has stored memory.",
+            "When checking counts by memory type or lifecycle status.",
+        ],
+        "when_not_to_use": [
+            "For retrieving memory content; use recall_memory.",
+            "For storing or reconciling memory; use record_interaction or submit_memory.",
+        ],
+        "side_effects": [],
+        "returns": "namespace, total count, counts by memory type, and counts by status.",
+    },
+)
+async def memory_stats(namespace: NamespaceArg) -> MemoryStatsResponse:
     """Return operational memory counts for a namespace."""
     async with AsyncSessionLocal() as db:
         try:
             memory_store = MemoryStore(db)
             stats = await memory_store.memory_stats(namespace)
             await db.commit()
-            return stats
+            return MemoryStatsResponse.model_validate(stats)
         except Exception:
             await db.rollback()
             raise

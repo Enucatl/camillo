@@ -1,3 +1,6 @@
+import pytest
+
+
 def test_mcp_server_module_imports_successfully() -> None:
     """Protect MCP tool registration from import-time dependency drift."""
     import camillo.mcp_server.server as server
@@ -45,3 +48,40 @@ def test_mcp_allowed_hosts_add_configured_proxy_hosts(monkeypatch) -> None:
         "camillo.docker.home.arpa:*",
         "camillo.internal:8000",
     ]
+
+
+@pytest.mark.asyncio
+async def test_recall_memory_metadata_is_client_read_only() -> None:
+    """Expose recall as read-only while keeping adaptive bookkeeping internal."""
+    from camillo.mcp_server.server import mcp
+
+    tools = {tool.name: tool for tool in await mcp.list_tools()}
+    recall_tool = tools["recall_memory"]
+    dumped = recall_tool.model_dump(by_alias=True)
+
+    assert dumped["annotations"]["readOnlyHint"] is True
+    assert dumped["annotations"]["destructiveHint"] is False
+    assert dumped["annotations"]["idempotentHint"] is True
+    assert "bookkeeping" not in dumped["description"]
+    assert dumped["_meta"]["side_effects"] == []
+    top_k_schema = dumped["inputSchema"]["properties"]["top_k"]
+    integer_schema = next(
+        schema for schema in top_k_schema["anyOf"] if schema.get("type") == "integer"
+    )
+    assert top_k_schema["default"] is None
+    assert integer_schema["minimum"] == 1
+    assert "maximum" not in integer_schema
+    assert "access_count" not in dumped["outputSchema"]["$defs"]["McpRecalledMemory"]["properties"]
+
+
+@pytest.mark.asyncio
+async def test_record_interaction_metadata_is_mutating() -> None:
+    """Keep write tools clearly separate from read-only MCP tools."""
+    from camillo.mcp_server.server import mcp
+
+    tools = {tool.name: tool for tool in await mcp.list_tools()}
+    record_tool = tools["record_interaction"].model_dump(by_alias=True)
+
+    assert record_tool["annotations"]["readOnlyHint"] is False
+    assert record_tool["annotations"]["destructiveHint"] is False
+    assert record_tool["_meta"]["side_effects"]
