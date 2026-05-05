@@ -1,7 +1,6 @@
 import json
 
 import litellm
-from litellm import acompletion, aembedding
 from loguru import logger
 
 from camillo.ai.prompts import render_valence_prompt
@@ -25,7 +24,7 @@ class LiteLLMService(CompletionProvider, EmbeddingProvider, Reranker):
             fallback when the provider response cannot be parsed.
         """
         try:
-            response = await acompletion(
+            response = await litellm.acompletion(
                 model=settings.litellm_completion_model,
                 messages=[{"role": "user", "content": render_valence_prompt(raw_content)}],
                 temperature=0,
@@ -47,7 +46,7 @@ class LiteLLMService(CompletionProvider, EmbeddingProvider, Reranker):
         Returns:
             A list of floats matching the configured embedding dimension.
         """
-        response = await aembedding(model=settings.litellm_embedding_model, input=[text])
+        response = await litellm.aembedding(model=settings.litellm_embedding_model, input=[text])
         embedding = response.data[0]["embedding"]
         return [float(value) for value in embedding]
 
@@ -122,7 +121,7 @@ class LiteLLMService(CompletionProvider, EmbeddingProvider, Reranker):
         prompt = _render_relationship_prompt(intent, new_content, numbered_memories)
 
         try:
-            response = await acompletion(
+            response = await litellm.acompletion(
                 model=settings.litellm_completion_model,
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0,

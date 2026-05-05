@@ -15,7 +15,7 @@ async def test_score_valence_parses_float(monkeypatch: pytest.MonkeyPatch) -> No
         message = SimpleNamespace(content="0.82")
         return SimpleNamespace(choices=[SimpleNamespace(message=message)])
 
-    monkeypatch.setattr(llm_service, "acompletion", fake_acompletion)
+    monkeypatch.setattr(llm_service.litellm, "acompletion", fake_acompletion)
 
     assert await LiteLLMService().score_valence("important") == 0.82
 
@@ -29,7 +29,7 @@ async def test_score_valence_falls_back_on_parse_failure(monkeypatch: pytest.Mon
         message = SimpleNamespace(content="not-a-number")
         return SimpleNamespace(choices=[SimpleNamespace(message=message)])
 
-    monkeypatch.setattr(llm_service, "acompletion", fake_acompletion)
+    monkeypatch.setattr(llm_service.litellm, "acompletion", fake_acompletion)
 
     assert await LiteLLMService().score_valence("temporary chatter") == 0.5
 
@@ -42,7 +42,7 @@ async def test_get_embedding_returns_first_vector(monkeypatch: pytest.MonkeyPatc
         """Return a LiteLLM-shaped embedding response without a network call."""
         return SimpleNamespace(data=[{"embedding": [1, 2.5, -3]}])
 
-    monkeypatch.setattr(llm_service, "aembedding", fake_aembedding)
+    monkeypatch.setattr(llm_service.litellm, "aembedding", fake_aembedding)
 
     assert await LiteLLMService().get_embedding("query") == [1.0, 2.5, -3.0]
 
