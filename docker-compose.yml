@@ -75,6 +75,8 @@ services:
       - postgres_password
       - camillo_fullchain
       - camillo_key
+    volumes:
+      - /etc/ssl/certs/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro
     tmpfs:
       - /tmp:rw,noexec,nosuid,size=64m
     labels:
