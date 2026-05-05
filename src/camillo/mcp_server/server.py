@@ -50,11 +50,26 @@ def _mcp_allowed_hosts() -> list[str]:
     Returns:
         Host header patterns accepted by FastMCP transport security.
     """
-    defaults = ["127.0.0.1:*", "localhost:*", "[::1]:*"]
+    app_host = settings.app_name.lower()
+    defaults = [
+        "127.0.0.1",
+        "127.0.0.1:*",
+        "localhost",
+        "localhost:*",
+        "[::1]",
+        "[::1]:*",
+        app_host,
+        f"{app_host}:*",
+    ]
     configured = [
         host.strip() for host in os.getenv("MCP_ALLOWED_HOSTS", "").split(",") if host.strip()
     ]
-    return defaults + configured
+    configured_with_ports: list[str] = []
+    for host in configured:
+        configured_with_ports.append(host)
+        if not host.startswith("[") and ":" not in host:
+            configured_with_ports.append(f"{host}:*")
+    return list(dict.fromkeys(defaults + configured_with_ports))
 
 
 mcp = FastMCP(

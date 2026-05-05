@@ -11,7 +11,16 @@ def test_mcp_allowed_hosts_include_localhost_defaults(monkeypatch) -> None:
 
     monkeypatch.delenv("MCP_ALLOWED_HOSTS", raising=False)
 
-    assert _mcp_allowed_hosts() == ["127.0.0.1:*", "localhost:*", "[::1]:*"]
+    assert _mcp_allowed_hosts() == [
+        "127.0.0.1",
+        "127.0.0.1:*",
+        "localhost",
+        "localhost:*",
+        "[::1]",
+        "[::1]:*",
+        "camillo",
+        "camillo:*",
+    ]
 
 
 def test_mcp_allowed_hosts_add_configured_proxy_hosts(monkeypatch) -> None:
@@ -24,9 +33,15 @@ def test_mcp_allowed_hosts_add_configured_proxy_hosts(monkeypatch) -> None:
     )
 
     assert _mcp_allowed_hosts() == [
+        "127.0.0.1",
         "127.0.0.1:*",
+        "localhost",
         "localhost:*",
+        "[::1]",
         "[::1]:*",
+        "camillo",
+        "camillo:*",
         "camillo.docker.home.arpa",
+        "camillo.docker.home.arpa:*",
         "camillo.internal:8000",
     ]
