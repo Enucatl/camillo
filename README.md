@@ -24,6 +24,9 @@ Phase 1 includes:
 - pgvector, trigram similarity, and basic access reinforcement
 - Docker Compose security baseline hardening via `../compose-security-baseline/hardening.yml`
 
+Use repo-scoped namespaces like `repo:<repo_name>` for project memories. `camillo`
+is the service name, not the default memory namespace.
+
 ## Run
 
 ```bash

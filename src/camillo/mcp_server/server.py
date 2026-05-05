@@ -237,6 +237,7 @@ mcp = FastMCP(
         "when_to_use": [
             "Before answering a question that may depend on prior user or project context.",
             "When a task references a project, preference, constraint, decision, or past instruction.",
+            "For project memory, use a repo-scoped namespace like repo:<repo_name> instead of the service name camillo.",
         ],
         "when_not_to_use": [
             "For storing new information; use record_interaction or submit_memory instead.",
@@ -432,6 +433,7 @@ async def submit_memory(
         "when_to_use": [
             "Before diagnosing whether a namespace has stored memory.",
             "When checking counts by memory type or lifecycle status.",
+            "For project memory, use a repo-scoped namespace like repo:<repo_name> instead of the service name camillo.",
         ],
         "when_not_to_use": [
             "For retrieving memory content; use recall_memory.",
