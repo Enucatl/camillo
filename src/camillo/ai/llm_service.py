@@ -9,6 +9,8 @@ from camillo.interfaces import CompletionProvider, EmbeddingProvider, Reranker
 from camillo.schemas.submit_memory import MemoryRelationshipClassification
 from camillo.settings import settings
 
+OPENROUTER_RERANK_API_BASE = "https://openrouter.ai/api/v1/rerank"
+
 
 class LiteLLMService(CompletionProvider, EmbeddingProvider, Reranker):
     """LiteLLM-backed implementation of the AI provider interfaces."""
@@ -73,14 +75,17 @@ class LiteLLMService(CompletionProvider, EmbeddingProvider, Reranker):
             return []
 
         fallback = [1.0 - (index / max(len(documents), 1)) * 0.2 for index in range(len(documents))]
-        if not settings.litellm_rerank_model:
+        rerank_model = settings.litellm_rerank_model
+        if not rerank_model:
             return fallback
 
         try:
+            rerank_kwargs = _rerank_provider_kwargs(rerank_model)
             response = await litellm.arerank(
-                model=settings.litellm_rerank_model,
+                model=rerank_kwargs.pop("model"),
                 query=query,
                 documents=documents,
+                **rerank_kwargs,
             )
             results = _response_value(response, "results") or []
             scores = [0.0] * len(documents)
@@ -175,6 +180,31 @@ def _response_value(item: object, key: str) -> object | None:
     if isinstance(item, dict):
         return item.get(key)
     return getattr(item, key, None)
+
+
+def _rerank_provider_kwargs(model: str) -> dict[str, str]:
+    """Route OpenRouter-backed rerank models through LiteLLM's proxy-compatible path.
+
+    LiteLLM does not expose an OpenRouter rerank provider, but its generic
+    proxy route can post Cohere-shaped rerank requests to OpenRouter's rerank
+    endpoint while preserving normalized response parsing.
+
+    Args:
+        model: Configured rerank model name.
+
+    Returns:
+        Keyword arguments for `litellm.arerank`.
+    """
+    if settings.openrouter_api_key and (
+        model.startswith("openrouter/") or model.startswith("cohere/rerank")
+    ):
+        return {
+            "model": model.removeprefix("openrouter/"),
+            "custom_llm_provider": "litellm_proxy",
+            "api_base": OPENROUTER_RERANK_API_BASE,
+            "api_key": settings.openrouter_api_key,
+        }
+    return {"model": model}
 
 
 def _fallback_relationships(count: int) -> list[MemoryRelationshipClassification]:
