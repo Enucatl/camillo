@@ -4,12 +4,13 @@ from typing import Any
 
 try:
     from mcp.server.fastmcp import FastMCP
+    from mcp.server.fastmcp.server import TransportSecuritySettings
 except ImportError:  # pragma: no cover - exercised only before dependency install
 
     class FastMCP:  # type: ignore[no-redef]
         """Minimal import-time fallback when the optional MCP package is absent."""
 
-        def __init__(self, _name: str):
+        def __init__(self, _name: str, **_kwargs: Any):
             """Accept the same constructor shape as FastMCP."""
 
         def tool(self):
@@ -19,6 +20,12 @@ except ImportError:  # pragma: no cover - exercised only before dependency insta
         def run(self) -> None:
             """Fail at runtime with a dependency-focused error."""
             raise RuntimeError("Install the 'mcp' package to run the MCP server.")
+
+    class TransportSecuritySettings:  # type: ignore[no-redef]
+        """Minimal fallback preserving import-time configuration shape."""
+
+        def __init__(self, **_kwargs: Any):
+            """Accept the FastMCP transport security settings shape."""
 
 
 from camillo.ai.llm_service import LiteLLMService
@@ -32,11 +39,38 @@ from camillo.stores.graph_store import GraphStore
 from camillo.stores.memory_store import MemoryStore
 from camillo.stores.relation_store import RelationStore
 
+
+def _mcp_allowed_hosts() -> list[str]:
+    """Build the FastMCP host allowlist without disabling rebinding protection.
+
+    FastMCP protects localhost-bound servers by validating Host headers. Camillo
+    is mounted behind Traefik, so deployments need to add the public reverse
+    proxy hostname while preserving the localhost defaults used for direct runs.
+
+    Returns:
+        Host header patterns accepted by FastMCP transport security.
+    """
+    defaults = ["127.0.0.1:*", "localhost:*", "[::1]:*"]
+    configured = [
+        host.strip() for host in os.getenv("MCP_ALLOWED_HOSTS", "").split(",") if host.strip()
+    ]
+    return defaults + configured
+
+
 mcp = FastMCP(
     "cognitive-memory-stack",
     host=os.getenv("MCP_HOST", "127.0.0.1"),
     port=int(os.getenv("MCP_PORT", "8001")),
     streamable_http_path="/",
+    transport_security=TransportSecuritySettings(
+        enable_dns_rebinding_protection=True,
+        allowed_hosts=_mcp_allowed_hosts(),
+        allowed_origins=[
+            "http://127.0.0.1:*",
+            "http://localhost:*",
+            "http://[::1]:*",
+        ],
+    ),
 )
 
 

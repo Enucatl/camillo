@@ -21,6 +21,7 @@ x-camillo-env: &camillo-env
   RECALL_VECTOR_LIMIT:
   RECALL_FULL_TEXT_SEARCH_LIMIT:
   HEBBIAN_EDGE_THRESHOLD:
+  MCP_ALLOWED_HOSTS: ${MCP_ALLOWED_HOSTS:-camillo.${DOCKER_DOMAIN}}
 
 services:
   postgres:
