@@ -20,7 +20,7 @@ COPY --chown=camillo:camillo src ./src
 COPY --chown=camillo:camillo alembic.ini ./
 COPY --chown=camillo:camillo migrate ./migrate
 
-RUN uv sync --locked --extra dev --extra trace --only-install-project
+RUN uv sync --locked --extra dev --extra trace
 
 EXPOSE 8000
 
