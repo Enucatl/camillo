@@ -5,7 +5,7 @@ x-camillo-env: &camillo-env
   POSTGRES_USER:
   POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
   POSTGRES_DB:
-  POSTGRES_HOST: camillo-postgres-1
+  POSTGRES_HOST: postgres
   POSTGRES_PORT:
   EMBEDDING_DIM:
   LITELLM_COMPLETION_MODEL:
