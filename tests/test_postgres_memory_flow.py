@@ -1,11 +1,13 @@
 import os
 import random
 import time
+from collections.abc import AsyncIterator
 from typing import ClassVar
 from uuid import uuid4
 
 import pytest
 from sqlalchemy import delete, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from camillo.cognitive.ingestion_service import IngestionService
 from camillo.cognitive.recall_service import RecallService
@@ -117,7 +119,7 @@ def _db_tests_enabled() -> bool:
 
 
 @pytest.fixture
-async def db_session():
+async def db_session() -> AsyncIterator[AsyncSession]:
     """Provide a rollback-scoped database session for integration tests.
 
     Yields:
@@ -132,7 +134,9 @@ async def db_session():
 
 
 @pytest.mark.asyncio
-async def test_postgres_end_to_end_memory_recall_edges_and_reinforcement(db_session) -> None:
+async def test_postgres_end_to_end_memory_recall_edges_and_reinforcement(
+    db_session: AsyncSession,
+) -> None:
     """Protect Phase 2 behavior against the real PostgreSQL stores."""
     namespace = f"test:{uuid4()}"
     memory_store = MemoryStore(db_session)
@@ -285,7 +289,9 @@ async def test_postgres_end_to_end_memory_recall_edges_and_reinforcement(db_sess
 
 @pytest.mark.performance
 @pytest.mark.asyncio
-async def test_postgres_synthetic_recall_performance(db_session) -> None:
+async def test_postgres_synthetic_recall_performance(
+    db_session: AsyncSession,
+) -> None:
     """Protect database recall from obvious performance regressions when opted in."""
     if os.getenv("RUN_PERF_TESTS") != "1":
         pytest.skip("Set RUN_PERF_TESTS=1 to run PostgreSQL performance checks")

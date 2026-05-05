@@ -19,6 +19,11 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
+    """Create the base memory and Hebbian edge tables.
+
+    Returns:
+        None. The migration mutates schema state through Alembic operations.
+    """
     op.execute("CREATE EXTENSION IF NOT EXISTS vector")
     op.execute("CREATE EXTENSION IF NOT EXISTS pg_trgm")
 
@@ -68,6 +73,11 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    """Remove the base memory and Hebbian edge tables.
+
+    Returns:
+        None. The migration rolls the schema back through Alembic operations.
+    """
     op.execute("DROP INDEX IF EXISTS ix_memories_embedding_hnsw")
     op.execute("DROP INDEX IF EXISTS ix_memories_raw_content_trgm")
     op.drop_index("ix_memories_session_id", table_name="memories")

@@ -1,17 +1,25 @@
 import sys
 import types
 
+import pytest
+
 from camillo import tracing_config
 
 
-def test_phoenix_tracing_disabled_by_default(monkeypatch):
+def test_phoenix_tracing_disabled_by_default(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Leave Phoenix tracing disabled when the feature flag is off."""
     monkeypatch.setattr(tracing_config.settings, "phoenix_tracing_enabled", False)
     monkeypatch.setattr(tracing_config, "_configured", False)
 
     assert tracing_config.configure_phoenix_tracing() is False
 
 
-def test_phoenix_tracing_registers_and_instruments(monkeypatch):
+def test_phoenix_tracing_registers_and_instruments(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Register Phoenix once and instrument LiteLLM when enabled."""
     calls = {}
 
     phoenix_module = types.ModuleType("phoenix")
@@ -20,11 +28,15 @@ def test_phoenix_tracing_registers_and_instruments(monkeypatch):
     instrumentation_module = types.ModuleType("openinference.instrumentation")
     litellm_module = types.ModuleType("openinference.instrumentation.litellm")
 
-    def register(**kwargs):
+    def register(**kwargs: object) -> None:
+        """Capture Phoenix registration arguments for the assertion."""
         calls["register"] = kwargs
 
     class LiteLLMInstrumentor:
-        def instrument(self):
+        """Stand in for the optional LiteLLM instrumentor."""
+
+        def instrument(self) -> None:
+            """Record that instrumentation was attempted."""
             calls["instrumented"] = True
 
     phoenix_otel_module.register = register

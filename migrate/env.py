@@ -19,6 +19,11 @@ target_metadata = Base.metadata
 
 
 def run_migrations_offline() -> None:
+    """Configure Alembic for offline SQL generation.
+
+    Returns:
+        None. The function emits migration SQL through Alembic's context.
+    """
     context.configure(
         url=settings.database_url,
         target_metadata=target_metadata,
@@ -31,6 +36,14 @@ def run_migrations_offline() -> None:
 
 
 def do_run_migrations(connection: Connection) -> None:
+    """Run Alembic migrations against a live SQLAlchemy connection.
+
+    Args:
+        connection: Active database connection passed in by Alembic.
+
+    Returns:
+        None. The migration context executes in-place.
+    """
     context.configure(connection=connection, target_metadata=target_metadata)
 
     with context.begin_transaction():
@@ -38,6 +51,11 @@ def do_run_migrations(connection: Connection) -> None:
 
 
 async def run_migrations_online() -> None:
+    """Create the async engine used for live Alembic migrations.
+
+    Returns:
+        None. The coroutine manages engine lifecycle and migration execution.
+    """
     connectable = create_async_engine(
         settings.database_url,
         poolclass=pool.NullPool,

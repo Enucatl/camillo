@@ -18,6 +18,11 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
+    """Add reconciliation fields and relation tracking tables.
+
+    Returns:
+        None. The migration mutates schema state through Alembic operations.
+    """
     op.add_column(
         "memories",
         sa.Column("confidence", sa.Float(), nullable=False, server_default="0.8"),
@@ -70,6 +75,11 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    """Remove reconciliation fields and relation tracking tables.
+
+    Returns:
+        None. The migration rolls the schema back through Alembic operations.
+    """
     op.drop_index("ix_memory_relations_relation_type", table_name="memory_relations")
     op.drop_index("ix_memory_relations_target_id", table_name="memory_relations")
     op.drop_index("ix_memory_relations_source_id", table_name="memory_relations")

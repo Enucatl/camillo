@@ -1,5 +1,6 @@
 import os
 import sys
+from collections.abc import Callable
 from typing import Annotated, Any
 
 try:
@@ -14,7 +15,7 @@ except ImportError:  # pragma: no cover - exercised only before dependency insta
         def __init__(self, _name: str, **_kwargs: Any):
             """Accept the same constructor shape as FastMCP."""
 
-        def tool(self):
+        def tool(self) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
             """Return a decorator preserving registered functions."""
             return lambda function: function
 

@@ -8,7 +8,9 @@ def test_mcp_server_module_imports_successfully() -> None:
     assert server.mcp is not None
 
 
-def test_mcp_allowed_hosts_include_localhost_defaults(monkeypatch) -> None:
+def test_mcp_allowed_hosts_include_localhost_defaults(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """Keep direct local MCP runs working when proxy hosts are unset."""
     from camillo.mcp_server.server import _mcp_allowed_hosts
 
@@ -26,7 +28,9 @@ def test_mcp_allowed_hosts_include_localhost_defaults(monkeypatch) -> None:
     ]
 
 
-def test_mcp_allowed_hosts_add_configured_proxy_hosts(monkeypatch) -> None:
+def test_mcp_allowed_hosts_add_configured_proxy_hosts(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """Allow reverse proxy host headers without disabling DNS rebinding checks."""
     from camillo.mcp_server.server import _mcp_allowed_hosts
 

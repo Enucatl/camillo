@@ -12,7 +12,7 @@ class FakeReconciliationService:
     def __init__(self, *args):
         """Accept production constructor arguments."""
 
-    async def submit_memory(self, **kwargs) -> MemorySubmissionReport:
+    async def submit_memory(self, **kwargs: object) -> MemorySubmissionReport:
         """Return a stable report while preserving request forwarding."""
         return MemorySubmissionReport(
             outcome="created",
@@ -34,7 +34,9 @@ class FakeSession:
 
 
 @pytest.mark.asyncio
-async def test_submit_memory_route_returns_expected_report_shape(monkeypatch) -> None:
+async def test_submit_memory_route_returns_expected_report_shape(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """Ensure `/submit_memory` serializes the reconciliation report model."""
     monkeypatch.setattr(
         routes_submit_memory, "MemoryReconciliationService", FakeReconciliationService

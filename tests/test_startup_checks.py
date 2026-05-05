@@ -1,12 +1,15 @@
 import logging
 
+import pytest
+
 from camillo import startup_checks
 
 
 def test_warn_missing_openrouter_key_when_openrouter_models_are_configured(
-    caplog,
-    monkeypatch,
+    caplog: pytest.LogCaptureFixture,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    """Warn operators when OpenRouter models are configured without a key."""
     monkeypatch.setattr(
         startup_checks.settings,
         "litellm_completion_model",
@@ -26,7 +29,11 @@ def test_warn_missing_openrouter_key_when_openrouter_models_are_configured(
     assert "OPENROUTER_API_KEY is unset" in caplog.text
 
 
-def test_no_warning_when_openrouter_key_is_configured(caplog, monkeypatch) -> None:
+def test_no_warning_when_openrouter_key_is_configured(
+    caplog: pytest.LogCaptureFixture,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Stay quiet when the OpenRouter key is present."""
     monkeypatch.setattr(
         startup_checks.settings,
         "litellm_completion_model",

@@ -10,7 +10,7 @@ from camillo.ai.llm_service import LiteLLMService
 async def test_score_valence_parses_float(monkeypatch: pytest.MonkeyPatch) -> None:
     """Protect valence parsing so provider strings become numeric memory weights."""
 
-    async def fake_acompletion(**_kwargs):
+    async def fake_acompletion(**_kwargs: object) -> SimpleNamespace:
         """Return parseable content so the test isolates conversion logic."""
         message = SimpleNamespace(content="0.82")
         return SimpleNamespace(choices=[SimpleNamespace(message=message)])
@@ -24,7 +24,7 @@ async def test_score_valence_parses_float(monkeypatch: pytest.MonkeyPatch) -> No
 async def test_score_valence_falls_back_on_parse_failure(monkeypatch: pytest.MonkeyPatch) -> None:
     """Protect ingestion from malformed provider output."""
 
-    async def fake_acompletion(**_kwargs):
+    async def fake_acompletion(**_kwargs: object) -> SimpleNamespace:
         """Return invalid content so fallback behavior is deterministic."""
         message = SimpleNamespace(content="not-a-number")
         return SimpleNamespace(choices=[SimpleNamespace(message=message)])
@@ -38,7 +38,7 @@ async def test_score_valence_falls_back_on_parse_failure(monkeypatch: pytest.Mon
 async def test_get_embedding_returns_first_vector(monkeypatch: pytest.MonkeyPatch) -> None:
     """Protect embedding conversion to plain floats for pgvector storage."""
 
-    async def fake_aembedding(**_kwargs):
+    async def fake_aembedding(**_kwargs: object) -> SimpleNamespace:
         """Return a LiteLLM-shaped embedding response without a network call."""
         return SimpleNamespace(data=[{"embedding": [1, 2.5, -3]}])
 
@@ -76,7 +76,7 @@ async def test_rerank_routes_openrouter_models_to_openrouter_endpoint(
     monkeypatch.setattr(llm_service.settings, "openrouter_api_key", "test-key")
     call_kwargs = {}
 
-    async def fake_arerank(**kwargs):
+    async def fake_arerank(**kwargs: object) -> SimpleNamespace:
         """Capture LiteLLM rerank routing without making a network call."""
         call_kwargs.update(kwargs)
         return SimpleNamespace(results=[{"index": 1, "relevance_score": 0.8}])

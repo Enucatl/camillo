@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from camillo.settings import Settings
 
 
@@ -39,7 +41,7 @@ def _settings_kwargs(**overrides: str | None) -> dict[str, str | None]:
     return values
 
 
-def test_builds_database_url_from_secret_file(tmp_path) -> None:
+def test_builds_database_url_from_secret_file(tmp_path: Path) -> None:
     """Protect Compose secret support from regressing to password-bearing env URLs."""
     secret_file = tmp_path / "postgres_password"
     secret_file.write_text("s3cr%t\n", encoding="utf-8")
@@ -49,7 +51,7 @@ def test_builds_database_url_from_secret_file(tmp_path) -> None:
     assert settings.database_url == "postgresql+asyncpg://camillo:s3cr%25t@postgres:5432/camillo"
 
 
-def test_database_url_override_remains_supported(tmp_path) -> None:
+def test_database_url_override_remains_supported(tmp_path: Path) -> None:
     """Keep one-shot operational overrides available for non-Compose workflows."""
     secret_file = tmp_path / "postgres_password"
     secret_file.write_text("ignored", encoding="utf-8")

@@ -6,6 +6,7 @@ from tests.fakes import FakeGraphStore, FakeLLMService, FakeMemoryStore
 
 @pytest.mark.asyncio
 async def test_ingest_interaction_stores_raw_episodic_memory() -> None:
+    """Keep ingestion storing the full conversation turn as episodic memory."""
     memory_store = FakeMemoryStore()
     graph_store = FakeGraphStore()
     llm_service = FakeLLMService(valence=0.91)
@@ -30,6 +31,7 @@ async def test_ingest_interaction_stores_raw_episodic_memory() -> None:
 
 @pytest.mark.asyncio
 async def test_ingest_interaction_links_adjacent_session_memories() -> None:
+    """Link consecutive turns from the same session in the memory graph."""
     memory_store = FakeMemoryStore()
     graph_store = FakeGraphStore()
     service = IngestionService(memory_store, graph_store, FakeLLMService())
@@ -43,6 +45,7 @@ async def test_ingest_interaction_links_adjacent_session_memories() -> None:
 
 @pytest.mark.asyncio
 async def test_ingest_interaction_does_not_link_different_sessions() -> None:
+    """Avoid cross-session graph edges when sessions do not match."""
     memory_store = FakeMemoryStore()
     graph_store = FakeGraphStore()
     service = IngestionService(memory_store, graph_store, FakeLLMService())

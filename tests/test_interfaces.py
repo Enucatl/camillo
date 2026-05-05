@@ -11,6 +11,7 @@ from camillo.stores.memory_store import MemoryStore
 
 
 def test_litellm_service_satisfies_provider_interfaces() -> None:
+    """Keep the service aligned with the provider protocol surface."""
     service = LiteLLMService()
 
     assert isinstance(service, CompletionProvider)
@@ -19,6 +20,7 @@ def test_litellm_service_satisfies_provider_interfaces() -> None:
 
 
 def test_store_implementations_satisfy_protocols() -> None:
+    """Ensure the concrete stores continue to satisfy the protocol contracts."""
     memory_store = MemoryStore(db=object())  # type: ignore[arg-type]
     graph_store = GraphStore(db=object())  # type: ignore[arg-type]
 

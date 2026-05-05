@@ -4,6 +4,7 @@ from camillo.main import app
 
 
 def test_health_returns_ok() -> None:
+    """Expose a simple readiness signal for liveness checks."""
     client = TestClient(app)
 
     response = client.get("/health")
