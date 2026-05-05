@@ -35,7 +35,7 @@ services:
     secrets:
       - postgres_password
     volumes:
-      - camillo_pg_data:/var/lib/postgresql
+      - postgres:/var/lib/postgresql
     networks:
       - internal
     healthcheck:
@@ -93,7 +93,7 @@ services:
     command: ["uvicorn", "camillo.main:app", "--host", "0.0.0.0", "--port", "8000"]
 
 volumes:
-  camillo_pg_data:
+  postgres:
 
 networks:
   internal:
