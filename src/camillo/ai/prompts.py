@@ -30,3 +30,29 @@ def render_valence_prompt(raw_content: str) -> str:
     return (
         _template_environment().get_template("valence_score.jinja").render(raw_content=raw_content)
     )
+
+
+def render_relationship_prompt(
+    intent: str,
+    new_content: str,
+    numbered_memories: str,
+) -> str:
+    """Render the contradiction-aware reconciliation prompt.
+
+    Args:
+        intent: Caller intent for the memory submission.
+        new_content: Candidate memory text to compare.
+        numbered_memories: Existing memories formatted as an indexed list.
+
+    Returns:
+        A LiteLLM-ready prompt that asks for strict JSON relationship output.
+    """
+    return (
+        _template_environment()
+        .get_template("relationship_resolution.jinja")
+        .render(
+            intent=intent,
+            new_content=new_content,
+            numbered_memories=numbered_memories,
+        )
+    )

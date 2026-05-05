@@ -3,7 +3,7 @@ import json
 import litellm
 from loguru import logger
 
-from camillo.ai.prompts import render_valence_prompt
+from camillo.ai.prompts import render_relationship_prompt, render_valence_prompt
 from camillo.db.models import Memory
 from camillo.interfaces import CompletionProvider, EmbeddingProvider, Reranker
 from camillo.schemas.submit_memory import MemoryRelationshipClassification
@@ -118,7 +118,7 @@ class LiteLLMService(CompletionProvider, EmbeddingProvider, Reranker):
         numbered_memories = "\n".join(
             f"{index}. {memory.raw_content}" for index, memory in enumerate(existing_memories)
         )
-        prompt = _render_relationship_prompt(intent, new_content, numbered_memories)
+        prompt = render_relationship_prompt(intent, new_content, numbered_memories)
 
         try:
             response = await litellm.acompletion(
@@ -193,86 +193,3 @@ def _fallback_relationships(count: int) -> list[MemoryRelationshipClassification
         )
         for index in range(count)
     ]
-
-
-def _render_relationship_prompt(
-    intent: str,
-    new_content: str,
-    numbered_memories: str,
-) -> str:
-    """Render the contradiction-aware classifier prompt.
-
-    Args:
-        intent: Caller intent for the memory submission.
-        new_content: Candidate memory.
-        numbered_memories: Existing memories as an indexed list.
-
-    Returns:
-        Prompt asking the model for strict JSON.
-    """
-    return f"""You are reconciling a new memory candidate against existing memories.
-
-Your job is not only to detect contradiction.
-Diagnose whether an apparent contradiction can be resolved by context, time,
-scope, environment, or specificity.
-
-Classify how the new content relates to each existing memory.
-
-Allowed relation labels:
-- confirms
-- extends
-- contradicts
-- supersedes
-- forgets
-- unrelated
-- duplicate
-
-Allowed contradiction_type values:
-- none
-- direct_conflict
-- temporal_shift
-- context_shift
-- scope_mismatch
-- environment_difference
-- preference_change
-- implementation_change
-- ambiguous
-
-Allowed resolution values:
-- keep_both
-- supersede_old
-- deprecate_old
-- refine_old
-- create_exception
-- needs_review
-
-Important rules:
-- Do not mark an old memory superseded merely because there is a surface-level conflict.
-- Prefer keep_both, refine_old, or create_exception when the conflict may be contextual.
-- Use supersede_old only when the new content clearly says the old memory is
-  outdated, replaced, or wrong.
-- Use deprecate_old when the new content explicitly says to forget, stop using,
-  or invalidate the old memory.
-- Preserve both memories when they can be made true with contextual qualifications.
-
-Intent: {intent}
-
-New content:
-{new_content}
-
-Existing memories:
-{numbered_memories}
-
-Return only valid JSON in this shape:
-[
-  {{
-    "index": 0,
-    "relation": "contradicts",
-    "confidence": 0.86,
-    "contradiction_type": "environment_difference",
-    "resolution": "keep_both",
-    "rationale": "The memories can both be true in different environments.",
-    "old_memory_refinement": "Redis is used for production caching.",
-    "new_memory_refinement": "Local tests use in-memory caching."
-  }}
-]"""
