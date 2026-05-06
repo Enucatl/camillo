@@ -55,7 +55,7 @@ async def test_fake_conversations_flow_through_ingest_recall_and_reinforcement()
     """Protect the ingest-to-recall path across namespaces and session edges."""
     memory_store = FakeMemoryStore()
     graph_store = FakeGraphStore()
-    llm_service = FakeLLMService(valence=0.82)
+    llm_service = FakeLLMService()
     ingestion = IngestionService(memory_store, graph_store, llm_service)
     recall = RecallService(memory_store, graph_store, llm_service)
 

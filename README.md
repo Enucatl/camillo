@@ -45,7 +45,6 @@ Cognitive service layer
 Ports and provider adapters
   |
   |-- EmbeddingProvider
-  |-- CompletionProvider
   |-- Reranker
   |-- LiteLLMService
   v
@@ -125,16 +124,16 @@ history as episodic memory.
 
 ```text
 user_msg + ai_msg
-  -> valence scoring through LiteLLM
+  -> deterministic rule-based importance scoring
   -> embedding through LiteLLM
   -> insert episodic memory
   -> find previous active memory in the same session
   -> create or strengthen a Hebbian adjacency edge
 ```
 
-The valence score becomes the memory's base importance. A `session_id` is
-optional, but using one lets Camillo connect adjacent turns into the associative
-graph.
+The local importance score becomes the memory's base importance. A `session_id`
+is optional, but using one lets Camillo connect adjacent turns into the
+associative graph.
 
 ## Recall Pipeline
 
@@ -172,10 +171,12 @@ Recall responses include score provenance:
 - `scope_affinity_score`
 - `final_score`
 
-Recall has side effects by design: returned memories get their access count and
-last-access timestamp updated, and co-returned memories reinforce a Hebbian
-clique. Disable `include_hebbian` for strict direct retrieval, or
-`include_shared` for strict namespace-local recall.
+HTTP recall has side effects by design: returned memories get their access count
+and last-access timestamp updated, and co-returned memories reinforce a Hebbian
+clique. Internal policy checks and MCP recall use the read-only recall path so
+duplicate detection and context lookup do not mutate memory. Disable
+`include_hebbian` for strict direct retrieval, or `include_shared` for strict
+namespace-local recall.
 
 ## Durable Memory Reconciliation
 

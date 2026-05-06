@@ -102,7 +102,7 @@ class MemoryReconciliationService:
                 message="Memory confidence was too low to store.",
             )
 
-        related = await self.recall_service.recall(
+        related = await self.recall_service.recall_read_only(
             namespace=namespace,
             query=normalized_content,
             top_k=settings.recall_top_k,

@@ -106,32 +106,16 @@ def make_memory(
 class FakeLLMService:
     """Provide deterministic AI behavior so recall tests isolate pipeline logic."""
 
-    def __init__(self, dim: int = 32, valence: float = 0.7):
+    def __init__(self, dim: int = 32):
         """Capture calls while keeping outputs stable.
 
         Args:
             dim: Embedding size for fake vectors.
-            valence: Importance score returned by ingestion tests.
         """
         self.dim = dim
-        self.valence = valence
-        self.scored: list[str] = []
         self.embedded: list[str] = []
         self.reranked: list[tuple[str, list[str]]] = []
         self.classifications: list[Any] | None = None
-
-    async def score_valence(self, user_msg: str, ai_msg: str) -> float:
-        """Avoid provider calls while still verifying ingestion wiring.
-
-        Args:
-            user_msg: User-side turn content.
-            ai_msg: Assistant-side turn content.
-
-        Returns:
-            The configured deterministic valence score.
-        """
-        self.scored.append(f"User:\n{user_msg}\n\nAssistant:\n{ai_msg}")
-        return self.valence
 
     async def get_embedding(self, text: str) -> list[float]:
         """Record embedding requests so tests can assert query flow.

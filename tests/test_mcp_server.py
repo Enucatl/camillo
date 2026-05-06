@@ -55,19 +55,19 @@ def test_mcp_allowed_hosts_add_configured_proxy_hosts(
 
 
 @pytest.mark.asyncio
-async def test_recall_memory_metadata_is_client_read_only() -> None:
-    """Expose recall as read-only while keeping adaptive bookkeeping internal."""
+async def test_recall_memory_metadata_is_adaptive_without_count_output() -> None:
+    """Expose MCP recall as adaptive while hiding bookkeeping details."""
     from camillo.mcp_server.server import mcp
 
     tools = {tool.name: tool for tool in await mcp.list_tools()}
     recall_tool = tools["recall_memory"]
     dumped = recall_tool.model_dump(by_alias=True)
 
-    assert dumped["annotations"]["readOnlyHint"] is True
+    assert dumped["annotations"]["readOnlyHint"] is False
     assert dumped["annotations"]["destructiveHint"] is False
-    assert dumped["annotations"]["idempotentHint"] is True
+    assert dumped["annotations"]["idempotentHint"] is False
     assert "bookkeeping" not in dumped["description"]
-    assert dumped["_meta"]["side_effects"] == []
+    assert dumped["_meta"]["side_effects"]
     top_k_schema = dumped["inputSchema"]["properties"]["top_k"]
     integer_schema = next(
         schema for schema in top_k_schema["anyOf"] if schema.get("type") == "integer"

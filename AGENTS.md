@@ -41,3 +41,15 @@ sections when they clarify the contract.
 
 Add inline comments only where they explain non-obvious tradeoffs, invariants, or
 provider/database quirks that future maintainers would otherwise need to infer.
+
+## Memory Semantics
+
+MCP `recall_memory` is intentionally adaptive, not read-only. Calling it should
+refresh memory access counts and reinforce Hebbian co-recall edges so useful
+memories stay active and associations form through use. Do not expose access
+counts or graph mutation details in the MCP recall response unless explicitly
+requested; clients need recalled content and score provenance, not bookkeeping.
+
+Use the internal read-only recall path only for backend policy checks such as
+reconciliation, duplicate detection, diagnostics, or other flows where looking
+up related memories must not train the graph.

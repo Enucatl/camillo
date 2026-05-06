@@ -134,7 +134,7 @@ class FakeReconciliationService:
         return MemorySubmissionReport(
             outcome="ignored_duplicate",
             affected_memory_ids=[self.memory_id],
-            message="reinforced",
+            message="duplicate",
         )
 
 

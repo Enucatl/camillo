@@ -7,34 +7,6 @@ from camillo.ai.llm_service import LiteLLMService
 
 
 @pytest.mark.asyncio
-async def test_score_valence_parses_float(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Protect valence parsing so provider strings become numeric memory weights."""
-
-    async def fake_acompletion(**_kwargs: object) -> SimpleNamespace:
-        """Return parseable content so the test isolates conversion logic."""
-        message = SimpleNamespace(content="0.82")
-        return SimpleNamespace(choices=[SimpleNamespace(message=message)])
-
-    monkeypatch.setattr(llm_service.litellm, "acompletion", fake_acompletion)
-
-    assert await LiteLLMService().score_valence("important", "relevant") == 0.82
-
-
-@pytest.mark.asyncio
-async def test_score_valence_falls_back_on_parse_failure(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Protect ingestion from malformed provider output."""
-
-    async def fake_acompletion(**_kwargs: object) -> SimpleNamespace:
-        """Return invalid content so fallback behavior is deterministic."""
-        message = SimpleNamespace(content="not-a-number")
-        return SimpleNamespace(choices=[SimpleNamespace(message=message)])
-
-    monkeypatch.setattr(llm_service.litellm, "acompletion", fake_acompletion)
-
-    assert await LiteLLMService().score_valence("temporary chatter", "fine") == 0.5
-
-
-@pytest.mark.asyncio
 async def test_get_embedding_returns_first_vector(monkeypatch: pytest.MonkeyPatch) -> None:
     """Protect embedding conversion to plain floats for pgvector storage."""
 

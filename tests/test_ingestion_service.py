@@ -1,6 +1,6 @@
 import pytest
 
-from camillo.cognitive.ingestion_service import IngestionService
+from camillo.cognitive.ingestion_service import IngestionService, score_interaction_importance
 from tests.fakes import FakeGraphStore, FakeLLMService, FakeMemoryStore
 
 
@@ -9,7 +9,7 @@ async def test_ingest_interaction_stores_raw_episodic_memory() -> None:
     """Keep ingestion storing the full conversation turn as episodic memory."""
     memory_store = FakeMemoryStore()
     graph_store = FakeGraphStore()
-    llm_service = FakeLLMService(valence=0.91)
+    llm_service = FakeLLMService()
     service = IngestionService(memory_store, graph_store, llm_service)
 
     memory = await service.ingest_interaction(
@@ -22,11 +22,23 @@ async def test_ingest_interaction_stores_raw_episodic_memory() -> None:
     assert memory.namespace == "repo:backend"
     assert memory.session_id == "session-1"
     assert memory.type == "episodic"
-    assert memory.base_importance == 0.91
+    assert memory.base_importance == 0.75
     assert "User:\nUse Postgres with pgvector." in memory.raw_content
     assert "Assistant:\nI will remember" in memory.raw_content
     assert len(memory.embedding) == 32
     assert memory_store.memories[0].raw_content.startswith("User:\nUse Postgres with pgvector.")
+
+
+def test_score_interaction_importance_is_rule_based() -> None:
+    """Keep ingestion importance deterministic and provider-free."""
+    assert score_interaction_importance("hello", "hi") == 0.45
+    assert (
+        score_interaction_importance(
+            "Remember: always run pytest before Docker changes.",
+            "I will keep that constraint in mind.",
+        )
+        == 1.0
+    )
 
 
 @pytest.mark.asyncio

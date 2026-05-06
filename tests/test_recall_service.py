@@ -101,6 +101,30 @@ async def test_recall_pipeline_uses_rerank_activation_and_reinforcement() -> Non
 
 
 @pytest.mark.asyncio
+async def test_recall_read_only_does_not_reinforce() -> None:
+    """Let MCP and internal policy checks inspect recall without mutation."""
+    memories = [
+        make_memory("Postgres pgvector durable memory.", namespace="repo"),
+        make_memory("FastAPI service recall pipeline.", namespace="repo"),
+    ]
+    memory_store = FakeMemoryStore(memories)
+    graph_store = FakeGraphStore()
+    service = RecallService(memory_store, graph_store, FakeLLMService())
+
+    results = await service.recall_read_only(
+        "repo",
+        "Postgres recall",
+        top_k=2,
+        include_hebbian=False,
+    )
+
+    assert results
+    assert memory_store.marked_accessed == []
+    assert all(memory.access_count == 0 for memory in memories)
+    assert graph_store.edges == {}
+
+
+@pytest.mark.asyncio
 async def test_recall_drops_low_rerank_scores() -> None:
     """Protect the relevance threshold so weak reranked memories are filtered."""
 

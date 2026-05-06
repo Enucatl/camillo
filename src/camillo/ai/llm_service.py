@@ -4,47 +4,17 @@ import re
 import litellm
 from loguru import logger
 
-from camillo.ai.prompts import render_relationship_prompt, render_valence_prompt
+from camillo.ai.prompts import render_relationship_prompt
 from camillo.db.models import Memory
-from camillo.interfaces import CompletionProvider, EmbeddingProvider, Reranker
+from camillo.interfaces import EmbeddingProvider, Reranker
 from camillo.schemas.submit_memory import MemoryRelationshipClassification
 from camillo.settings import settings
 
 OPENROUTER_RERANK_API_BASE = "https://openrouter.ai/api/v1/rerank"
 
 
-class LiteLLMService(CompletionProvider, EmbeddingProvider, Reranker):
+class LiteLLMService(EmbeddingProvider, Reranker):
     """LiteLLM-backed implementation of the AI provider interfaces."""
-
-    async def score_valence(self, user_msg: str, ai_msg: str) -> float:
-        """Score whether an interaction is worth retaining long-term.
-
-        Args:
-            user_msg: The user-side turn content to classify.
-            ai_msg: The assistant-side turn content to classify.
-
-        Returns:
-            A clamped continuous score from 0.0 to 1.0, with 0.5 as a neutral
-            fallback when the provider response cannot be parsed.
-        """
-        try:
-            response = await litellm.acompletion(
-                model=settings.litellm_completion_model,
-                messages=[
-                    {
-                        "role": "user",
-                        "content": render_valence_prompt(user_msg, ai_msg),
-                    }
-                ],
-                temperature=0,
-            )
-            content = response.choices[0].message.content or ""
-            score = float(content.strip())
-        except Exception:
-            logger.exception("Failed to score memory valence; using default")
-            return 0.5
-
-        return max(0.0, min(score, 1.0))
 
     async def get_embedding(self, text: str) -> list[float]:
         """Embed text using the configured LiteLLM embedding model.

@@ -46,30 +46,14 @@ class KeywordLLMService:
         "irrigation",
     ]
 
-    def __init__(self, dim: int, valence: float = 0.7):
+    def __init__(self, dim: int):
         """Configure deterministic provider behavior for PostgreSQL tests.
 
         Args:
             dim: Embedding dimension required by the configured database vector.
-            valence: Importance score returned during ingestion.
         """
         self.dim = dim
-        self.valence = valence
-        self.scored: list[str] = []
         self.embedded: list[str] = []
-
-    async def score_valence(self, user_msg: str, ai_msg: str) -> float:
-        """Avoid remote completion calls while still exercising ingestion.
-
-        Args:
-            user_msg: User-side turn content.
-            ai_msg: Assistant-side turn content.
-
-        Returns:
-            The configured deterministic valence score.
-        """
-        self.scored.append(f"User:\n{user_msg}\n\nAssistant:\n{ai_msg}")
-        return self.valence
 
     async def get_embedding(self, text: str) -> list[float]:
         """Map known keywords to vector dimensions for stable recall assertions.
@@ -141,7 +125,7 @@ async def test_postgres_end_to_end_memory_recall_edges_and_reinforcement(
     namespace = f"test:{uuid4()}"
     memory_store = MemoryStore(db_session)
     graph_store = GraphStore(db_session)
-    llm_service = KeywordLLMService(dim=settings.embedding_dim, valence=0.88)
+    llm_service = KeywordLLMService(dim=settings.embedding_dim)
     service = IngestionService(
         memory_store,
         graph_store,
@@ -300,7 +284,7 @@ async def test_postgres_synthetic_recall_performance(
     rng = random.Random(99)
     memory_store = MemoryStore(db_session)
     graph_store = GraphStore(db_session)
-    llm_service = FakeLLMService(dim=settings.embedding_dim, valence=0.6)
+    llm_service = FakeLLMService(dim=settings.embedding_dim)
 
     for index in range(200):
         await memory_store.insert_memory(

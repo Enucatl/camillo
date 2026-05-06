@@ -69,7 +69,6 @@ class Settings(BaseSettings):
     )
     hebbian_spread_enabled: bool = Field(default=True, alias="HEBBIAN_SPREAD_ENABLED")
     hebbian_spread_limit: int = Field(default=3, alias="HEBBIAN_SPREAD_LIMIT")
-    hebbian_max_depth: int = Field(default=1, alias="HEBBIAN_MAX_DEPTH")
     hebbian_edge_threshold: float = Field(alias="HEBBIAN_EDGE_THRESHOLD")
     reinforcement_enabled: bool = Field(default=True, alias="REINFORCEMENT_ENABLED")
     reinforcement_edge_increment: float = Field(

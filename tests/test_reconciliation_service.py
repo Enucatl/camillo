@@ -132,7 +132,8 @@ async def test_submit_memory_reinforces_duplicate_instead_of_creating_memory() -
     assert report.outcome == "ignored_duplicate"
     assert report.affected_memory_ids == [old_memory.id]
     assert len(memory_store.memories) == 1
-    assert old_memory.access_count >= 1
+    assert memory_store.marked_accessed == []
+    assert old_memory.access_count == 1
 
 
 @pytest.mark.asyncio

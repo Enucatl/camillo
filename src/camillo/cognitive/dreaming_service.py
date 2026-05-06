@@ -21,7 +21,6 @@ ALLOWED_DREAM_MEMORY_TYPES = {
 }
 SUCCESSFUL_CONSOLIDATION_OUTCOMES = {
     "created",
-    "reinforced",
     "ignored_duplicate",
 }
 

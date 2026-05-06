@@ -88,7 +88,6 @@ class MemorySubmissionReport(BaseModel):
 
     outcome: Literal[
         "created",
-        "reinforced",
         "superseded_old_memory",
         "deprecated_old_memory",
         "ignored_duplicate",

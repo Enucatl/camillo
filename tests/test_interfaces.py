@@ -1,6 +1,5 @@
 from camillo.ai.llm_service import LiteLLMService
 from camillo.interfaces import (
-    CompletionProvider,
     EmbeddingProvider,
     GraphStoreProtocol,
     MemoryStoreProtocol,
@@ -14,7 +13,6 @@ def test_litellm_service_satisfies_provider_interfaces() -> None:
     """Keep the service aligned with the provider protocol surface."""
     service = LiteLLMService()
 
-    assert isinstance(service, CompletionProvider)
     assert isinstance(service, EmbeddingProvider)
     assert isinstance(service, Reranker)
 

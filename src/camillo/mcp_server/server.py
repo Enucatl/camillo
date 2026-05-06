@@ -260,7 +260,7 @@ mcp = FastMCP(
         "Use this before answering when prior project context, user preferences, or "
         "operational constraints may affect the response."
     ),
-    annotations=READ_ONLY_ANNOTATIONS,
+    annotations=WRITE_ANNOTATIONS,
     meta={
         "when_to_use": [
             "Before answering a question that may depend on prior user or project context.",
@@ -273,7 +273,10 @@ mcp = FastMCP(
             "For storing new information; use record_interaction or submit_memory instead.",
             "For global search across unrelated namespaces.",
         ],
-        "side_effects": [],
+        "side_effects": [
+            "Refreshes access bookkeeping for returned memories.",
+            "May reinforce Hebbian co-recall edges among returned memories.",
+        ],
         "returns": "query, namespace, and ranked memories with score provenance.",
     },
 )

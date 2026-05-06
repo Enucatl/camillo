@@ -62,6 +62,38 @@ class RecallService:
         Returns:
             Primary candidates followed by optional Hebbian candidates.
         """
+        returned = await self.recall_read_only(
+            namespace,
+            query,
+            top_k,
+            include_hebbian=include_hebbian,
+            include_shared=include_shared,
+        )
+        await self._reinforce(returned)
+        return returned
+
+    async def recall_read_only(
+        self,
+        namespace: str,
+        query: str,
+        top_k: int,
+        *,
+        include_hebbian: bool = True,
+        include_shared: bool = True,
+    ) -> list[Candidate]:
+        """Run recall scoring without access or graph reinforcement side effects.
+
+        Args:
+            namespace: Memory partition to query.
+            query: Natural-language recall prompt.
+            top_k: Number of primary memories to return before graph expansion.
+            include_hebbian: Whether graph-linked memories may be appended.
+            include_shared: Whether shared/global cross-namespace memories are
+                eligible for direct recall.
+
+        Returns:
+            Primary candidates followed by optional Hebbian candidates.
+        """
         query_embedding = await self.llm_service.get_embedding(query)
         candidates = await self._generate_candidates(
             namespace,
@@ -77,9 +109,7 @@ class RecallService:
         candidates = self._score_activation_and_final(candidates, namespace)
         primary = self._select_primary(candidates, top_k)
         hebbian = await self._expand_hebbian(primary, include_hebbian, namespace)
-        returned = primary + hebbian
-        await self._reinforce(returned)
-        return returned
+        return primary + hebbian
 
     async def _generate_candidates(
         self,
@@ -209,8 +239,19 @@ class RecallService:
             candidate.activation_score = activation
             candidate.scope_affinity_score = affinity
             activation_for_score = min(activation / 1.5, 1.0)
+            configured_total = settings.recall_relevance_weight + settings.recall_activation_weight
+            scope_weight = 0.10
+            score_weight_budget = 1.0 - scope_weight
+            relevance_weight = (
+                settings.recall_relevance_weight / configured_total * score_weight_budget
+            )
+            activation_weight = (
+                settings.recall_activation_weight / configured_total * score_weight_budget
+            )
             candidate.final_score = (
-                0.65 * candidate.retrieval_score + 0.25 * activation_for_score + 0.10 * affinity
+                relevance_weight * candidate.retrieval_score
+                + activation_weight * activation_for_score
+                + scope_weight * affinity
             )
 
         candidates.sort(key=lambda candidate: candidate.final_score or 0.0, reverse=True)
