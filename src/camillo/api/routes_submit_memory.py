@@ -36,6 +36,7 @@ async def submit_memory(
         content=request.content,
         intent=request.intent,
         memory_type=request.memory_type,
+        scope=request.scope,
         evidence=request.evidence,
         confidence=request.confidence,
     )

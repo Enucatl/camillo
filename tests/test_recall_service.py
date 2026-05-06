@@ -121,10 +121,10 @@ async def test_recall_drops_low_rerank_scores() -> None:
 
 
 @pytest.mark.asyncio
-async def test_recall_adds_hebbian_neighbors_without_reranking_them() -> None:
+async def test_recall_adds_hebbian_neighbors_after_primary_results() -> None:
     """Protect the rule that graph context is appended after primary recall."""
     primary = make_memory("Postgres pgvector durable memory.", namespace="repo")
-    neighbor = make_memory("Alembic migration context.", namespace="repo:linked")
+    neighbor = make_memory("Alembic migration context.", namespace="repo:linked", scope="shared")
     llm_service = FakeLLMService()
     memory_store = FakeMemoryStore([primary, neighbor])
     graph_store = FakeGraphStore()
@@ -137,5 +137,45 @@ async def test_recall_adds_hebbian_neighbors_without_reranking_them() -> None:
     assert results[1].memory.id == neighbor.id
     assert results[1].linked_from == primary.id
     assert results[1].edge_weight == 3.0
-    reranked_documents = llm_service.reranked[0][1]
-    assert neighbor.raw_content not in reranked_documents
+
+
+@pytest.mark.asyncio
+async def test_recall_includes_shared_and_global_memories_by_default() -> None:
+    """Allow reusable memories to cross namespace boundaries."""
+    local = make_memory("Postgres pgvector local memory.", namespace="repo")
+    shared = make_memory("Postgres pgvector shared procedure.", namespace="other", scope="shared")
+    global_memory = make_memory(
+        "Postgres pgvector global preference.",
+        namespace="user:default",
+        scope="global",
+    )
+    excluded = make_memory("Postgres pgvector private note.", namespace="other", scope="local")
+    memory_store = FakeMemoryStore([local, shared, global_memory, excluded])
+    service = RecallService(memory_store, FakeGraphStore(), FakeLLMService())
+
+    results = await service.recall("repo", "Postgres pgvector", top_k=10, include_hebbian=False)
+
+    result_ids = {result.memory.id for result in results}
+    assert local.id in result_ids
+    assert shared.id in result_ids
+    assert global_memory.id in result_ids
+    assert excluded.id not in result_ids
+
+
+@pytest.mark.asyncio
+async def test_recall_can_disable_shared_memories() -> None:
+    """Preserve strict namespace-local recall when requested."""
+    local = make_memory("Postgres pgvector local memory.", namespace="repo")
+    shared = make_memory("Postgres pgvector shared procedure.", namespace="other", scope="shared")
+    memory_store = FakeMemoryStore([local, shared])
+    service = RecallService(memory_store, FakeGraphStore(), FakeLLMService())
+
+    results = await service.recall(
+        "repo",
+        "Postgres pgvector",
+        top_k=10,
+        include_hebbian=False,
+        include_shared=False,
+    )
+
+    assert [result.memory.id for result in results] == [local.id]

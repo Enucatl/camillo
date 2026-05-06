@@ -14,6 +14,7 @@ class RecallRequest(BaseModel):
     query: str
     top_k: int | None = None
     include_hebbian: bool = True
+    include_shared: bool = True
 
 
 class ScoreBreakdown(BaseModel):
@@ -26,6 +27,7 @@ class ScoreBreakdown(BaseModel):
     retrieval_score: float = Field(ge=0.0)
     rerank_score: float | None = None
     activation_score: float = Field(ge=0.0)
+    scope_affinity_score: float = Field(ge=0.0)
     final_score: float = Field(ge=0.0)
     vector_score: float | None = None
     text_score: float | None = None
@@ -41,6 +43,7 @@ class RecalledMemory(BaseModel):
 
     id: UUID
     namespace: str
+    scope: str
     raw_content: str
     type: str
     base_importance: float

@@ -7,6 +7,7 @@ from typing import Any
 from uuid import UUID, uuid4
 
 from camillo.cognitive.cognitive_math import calculate_activation
+from camillo.cognitive.scope_policy import normalize_memory_scope
 from camillo.db.models import Memory
 
 
@@ -63,6 +64,7 @@ def make_memory(
     embedding: list[float] | None = None,
     base_importance: float = 0.5,
     memory_type: str = "episodic",
+    scope: str | None = None,
 ) -> Memory:
     """Create model-shaped memories so tests cover real service contracts.
 
@@ -73,6 +75,7 @@ def make_memory(
         embedding: Optional explicit vector for ranking tests.
         base_importance: ACT-R base importance value.
         memory_type: Memory category to assign.
+        scope: Optional local/shared/global reuse scope.
 
     Returns:
         An unsaved `Memory` instance with active status.
@@ -86,6 +89,7 @@ def make_memory(
         embedding=embedding or synthetic_embedding(raw_content),
         type=memory_type,
         status="active",
+        scope=normalize_memory_scope(scope, memory_type),
         confidence=0.8,
         source=None,
         superseded_by=None,
@@ -211,6 +215,7 @@ class FakeMemoryStore:
         confidence: float | None = None,
         source: str | None = None,
         status: str = "active",
+        scope: str | None = None,
     ) -> Memory:
         """Append memories so ingestion tests can observe persistence effects.
 
@@ -235,6 +240,7 @@ class FakeMemoryStore:
             memory_type=memory_type,
         )
         memory.status = status
+        memory.scope = normalize_memory_scope(scope, memory_type)
         memory.confidence = confidence if confidence is not None else 0.8
         memory.source = source
         memory.metadata_json = metadata or {}
@@ -267,6 +273,8 @@ class FakeMemoryStore:
         namespace: str,
         embedding: list[float],
         limit: int,
+        *,
+        include_shared: bool = True,
     ) -> list[tuple[Memory, float]]:
         """Let recall tests exercise semantic retrieval ordering.
 
@@ -281,7 +289,11 @@ class FakeMemoryStore:
         matches = [
             (memory, cosine_similarity(memory.embedding, embedding))
             for memory in self.memories
-            if memory.namespace == namespace and memory.status == "active"
+            if memory.status == "active"
+            and (
+                memory.namespace == namespace
+                or (include_shared and memory.scope in {"shared", "global"})
+            )
         ]
         matches.sort(key=lambda item: item[1], reverse=True)
         return matches[:limit]
@@ -291,6 +303,8 @@ class FakeMemoryStore:
         namespace: str,
         query: str,
         limit: int,
+        *,
+        include_shared: bool = True,
     ) -> list[tuple[Memory, float]]:
         """Let recall tests exercise lexical retrieval and RRF behavior.
 
@@ -305,7 +319,11 @@ class FakeMemoryStore:
         terms = tokenize(query)
         matches = []
         for memory in self.memories:
-            if memory.namespace != namespace or memory.status != "active":
+            if memory.status != "active":
+                continue
+            if memory.namespace != namespace and not (
+                include_shared and memory.scope in {"shared", "global"}
+            ):
                 continue
             words = tokenize(memory.raw_content)
             score = len(terms & words) / max(len(terms), 1)
@@ -504,6 +522,10 @@ class FakeMemoryStore:
             "total": len(matches),
             "by_type": by_type,
             "by_status": by_status,
+            "by_scope": {
+                scope: len([memory for memory in matches if memory.scope == scope])
+                for scope in {memory.scope for memory in matches}
+            },
         }
 
 

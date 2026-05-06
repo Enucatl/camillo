@@ -6,6 +6,7 @@ from sqlalchemy import desc, func, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from camillo.cognitive.cognitive_math import calculate_activation
+from camillo.cognitive.scope_policy import normalize_memory_scope
 from camillo.db.models import Memory
 from camillo.interfaces import MemoryStoreProtocol
 
@@ -34,13 +35,16 @@ class MemoryStore(MemoryStoreProtocol):
         confidence: float | None = None,
         source: str | None = None,
         status: str = "active",
+        scope: str | None = None,
     ) -> Memory:
         """Insert a memory without committing the surrounding transaction."""
+        normalized_scope = normalize_memory_scope(scope, memory_type)
         memory = Memory(
             namespace=namespace,
             raw_content=raw_content,
             embedding=embedding,
             type=memory_type,
+            scope=normalized_scope,
             base_importance=base_importance,
             session_id=session_id,
             metadata_json=metadata or {},
@@ -73,6 +77,8 @@ class MemoryStore(MemoryStoreProtocol):
         namespace: str,
         embedding: list[float],
         limit: int,
+        *,
+        include_shared: bool = True,
     ) -> list[tuple[Memory, float]]:
         """Use vector recall for semantic candidates within one namespace.
 
@@ -80,15 +86,22 @@ class MemoryStore(MemoryStoreProtocol):
             namespace: Partition that prevents cross-project recall.
             embedding: Query embedding in the configured vector dimension.
             limit: Maximum semantic candidates to return.
+            include_shared: Whether shared/global memories from other namespaces
+                are eligible.
 
         Returns:
             Active memories with cosine-distance-derived similarity scores.
         """
+        namespace_filter = (
+            (Memory.namespace == namespace) | (Memory.scope.in_(["shared", "global"]))
+            if include_shared
+            else Memory.namespace == namespace
+        )
         distance = Memory.embedding.cosine_distance(embedding).label("distance")
         result = await self.db.execute(
             select(Memory, distance)
             .where(
-                Memory.namespace == namespace,
+                namespace_filter,
                 Memory.status == "active",
                 Memory.embedding.is_not(None),
             )
@@ -102,6 +115,8 @@ class MemoryStore(MemoryStoreProtocol):
         namespace: str,
         query: str,
         limit: int,
+        *,
+        include_shared: bool = True,
     ) -> list[tuple[Memory, float]]:
         """Use lexical recall to recover exact terms vector search may miss.
 
@@ -109,15 +124,22 @@ class MemoryStore(MemoryStoreProtocol):
             namespace: Partition that prevents cross-project recall.
             query: Raw query text for trigram similarity.
             limit: Maximum lexical candidates to return.
+            include_shared: Whether shared/global memories from other namespaces
+                are eligible.
 
         Returns:
             Active memories with positive trigram similarity scores.
         """
+        namespace_filter = (
+            (Memory.namespace == namespace) | (Memory.scope.in_(["shared", "global"]))
+            if include_shared
+            else Memory.namespace == namespace
+        )
         similarity = func.similarity(Memory.raw_content, query).label("similarity")
         result = await self.db.execute(
             select(Memory, similarity)
             .where(
-                Memory.namespace == namespace,
+                namespace_filter,
                 Memory.status == "active",
                 similarity > 0.0,
             )
@@ -131,6 +153,8 @@ class MemoryStore(MemoryStoreProtocol):
         namespace: str,
         query: str,
         limit: int,
+        *,
+        include_shared: bool = True,
     ) -> list[tuple[Memory, float]]:
         """Keep the shorter Phase 2 name available without duplicating logic.
 
@@ -138,11 +162,18 @@ class MemoryStore(MemoryStoreProtocol):
             namespace: Partition that prevents cross-project recall.
             query: Raw query text for lexical matching.
             limit: Maximum lexical candidates to return.
+            include_shared: Whether shared/global memories from other namespaces
+                are eligible.
 
         Returns:
             The same candidates as `full_text_search_candidates`.
         """
-        return await self.full_text_search_candidates(namespace, query, limit)
+        return await self.full_text_search_candidates(
+            namespace,
+            query,
+            limit,
+            include_shared=include_shared,
+        )
 
     async def get_memories_by_ids(
         self,
@@ -386,9 +417,15 @@ class MemoryStore(MemoryStoreProtocol):
             .where(Memory.namespace == namespace)
             .group_by(Memory.status)
         )
+        by_scope_rows = await self.db.execute(
+            select(Memory.scope, func.count())
+            .where(Memory.namespace == namespace)
+            .group_by(Memory.scope)
+        )
         return {
             "namespace": namespace,
             "total": int(total or 0),
             "by_type": {memory_type: count for memory_type, count in by_type_rows.all()},
             "by_status": {status: count for status, count in by_status_rows.all()},
+            "by_scope": {scope: count for scope, count in by_scope_rows.all()},
         }

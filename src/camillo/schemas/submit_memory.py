@@ -12,6 +12,7 @@ DurableMemoryType = Literal[
     "profile",
     "core",
 ]
+MemoryScope = Literal["local", "shared", "global"]
 
 
 class MemoryRelationshipClassification(BaseModel):
@@ -67,6 +68,7 @@ class SubmitMemoryRequest(BaseModel):
     content: str
     intent: MemoryIntent = "auto"
     memory_type: DurableMemoryType | None = None
+    scope: MemoryScope | None = None
     evidence: str | None = None
     confidence: float | None = Field(default=None, ge=0.0, le=1.0)
 

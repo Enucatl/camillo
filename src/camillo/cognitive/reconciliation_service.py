@@ -1,6 +1,7 @@
 from typing import Protocol
 
 from camillo.cognitive.recall_service import RecallService
+from camillo.cognitive.scope_policy import normalize_memory_scope
 from camillo.db.models import Memory
 from camillo.interfaces import EmbeddingProvider, MemoryStoreProtocol
 from camillo.schemas.submit_memory import (
@@ -67,6 +68,7 @@ class MemoryReconciliationService:
         content: str,
         intent: str = "auto",
         memory_type: str | None = None,
+        scope: str | None = None,
         evidence: str | None = None,
         confidence: float | None = None,
     ) -> MemorySubmissionReport:
@@ -77,6 +79,7 @@ class MemoryReconciliationService:
             content: Candidate memory content.
             intent: Caller intent: auto, remember, correct, or forget.
             memory_type: Durable memory type, defaulting to semantic.
+            scope: Optional local/shared/global reuse scope.
             evidence: Optional support text stored as metadata.
             confidence: Optional caller confidence.
 
@@ -91,6 +94,7 @@ class MemoryReconciliationService:
             )
 
         durable_type = self._normalize_memory_type(memory_type)
+        durable_scope = normalize_memory_scope(scope, durable_type)
         candidate_confidence = 0.8 if confidence is None else max(0.0, min(confidence, 1.0))
         if candidate_confidence <= 0.0 and intent != "forget":
             return MemorySubmissionReport(
@@ -132,6 +136,7 @@ class MemoryReconciliationService:
                 normalized_content,
                 durable_type,
                 candidate_confidence,
+                durable_scope,
                 evidence,
                 intent,
                 best,
@@ -170,6 +175,7 @@ class MemoryReconciliationService:
             candidate_confidence
             if best.resolution != "needs_review"
             else min(candidate_confidence, 0.5),
+            durable_scope,
             evidence,
             intent,
             best,
@@ -264,6 +270,7 @@ class MemoryReconciliationService:
         content: str,
         memory_type: DurableMemoryType,
         confidence: float,
+        scope: str,
         evidence: str | None,
         intent: str,
         classification: MemoryRelationshipClassification | None,
@@ -277,6 +284,7 @@ class MemoryReconciliationService:
             memory_type=memory_type,
             base_importance=confidence,
             confidence=confidence,
+            scope=scope,
             source="mcp_submit_memory",
             metadata={
                 "evidence": evidence,

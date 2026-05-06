@@ -33,6 +33,7 @@ class Memory(Base):
     embedding: Mapped[list[float]] = mapped_column(Vector(settings.embedding_dim))
     type: Mapped[str] = mapped_column(String(50), default="episodic")
     status: Mapped[str] = mapped_column(String(50), default="active")
+    scope: Mapped[str] = mapped_column(Text, default="local")
     confidence: Mapped[float] = mapped_column(Float, default=0.8)
     source: Mapped[str | None] = mapped_column(Text, nullable=True)
     superseded_by: Mapped[UUID | None] = mapped_column(ForeignKey("memories.id"), nullable=True)

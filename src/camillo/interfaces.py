@@ -54,6 +54,7 @@ class MemoryStoreProtocol(ABC):
         confidence: float | None = None,
         source: str | None = None,
         status: str = "active",
+        scope: str | None = None,
     ) -> Memory:
         """Persist a memory and return the database-backed model."""
 
@@ -69,6 +70,8 @@ class MemoryStoreProtocol(ABC):
         namespace: str,
         embedding: list[float],
         limit: int,
+        *,
+        include_shared: bool = True,
     ) -> list[tuple[Memory, float]]:
         """Return vector-similar memories with normalized similarity scores."""
 
@@ -78,6 +81,8 @@ class MemoryStoreProtocol(ABC):
         namespace: str,
         query: str,
         limit: int,
+        *,
+        include_shared: bool = True,
     ) -> list[tuple[Memory, float]]:
         """Return lexical full-text-search candidates with relevance scores."""
 

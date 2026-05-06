@@ -46,7 +46,12 @@ from camillo.db.session import AsyncSessionLocal
 from camillo.schemas.ingest import IngestResponse
 from camillo.schemas.memory import McpRecalledMemory, McpRecallResponse, MemoryStatsResponse
 from camillo.schemas.recall import ScoreBreakdown
-from camillo.schemas.submit_memory import DurableMemoryType, MemoryIntent, MemorySubmissionReport
+from camillo.schemas.submit_memory import (
+    DurableMemoryType,
+    MemoryIntent,
+    MemoryScope,
+    MemorySubmissionReport,
+)
 from camillo.settings import settings
 from camillo.stores.graph_store import GraphStore
 from camillo.stores.memory_store import MemoryStore
@@ -92,6 +97,17 @@ IncludeHebbianArg = Annotated[
         description=(
             "Whether to append graph-associated memories after the primary matches. "
             "Disable for strict direct retrieval."
+        ),
+    ),
+]
+
+IncludeSharedArg = Annotated[
+    bool,
+    Field(
+        default=True,
+        description=(
+            "Whether recall may include shared/global memories from other namespaces. "
+            "Disable for strict namespace-local recall."
         ),
     ),
 ]
@@ -152,6 +168,17 @@ ConfidenceArg = Annotated[
         ge=0.0,
         le=1.0,
         description="Optional caller confidence. Omit to let Camillo use its default.",
+    ),
+]
+
+MemoryScopeArg = Annotated[
+    MemoryScope | None,
+    Field(
+        default=None,
+        description=(
+            "Optional reuse scope for durable memories: local, shared, or global. "
+            "Omit to derive scope from memory_type."
+        ),
     ),
 ]
 
@@ -237,8 +264,10 @@ mcp = FastMCP(
     meta={
         "when_to_use": [
             "Before answering a question that may depend on prior user or project context.",
-            "When a task references a project, preference, constraint, decision, or past instruction.",
-            "For project memory, use a repo-scoped namespace like repo:<repo_name> instead of the service name camillo.",
+            "When a task references a project, preference, constraint, decision, "
+            "or past instruction.",
+            "For project memory, use a repo-scoped namespace like repo:<repo_name> "
+            "instead of the service name camillo.",
         ],
         "when_not_to_use": [
             "For storing new information; use record_interaction or submit_memory instead.",
@@ -253,6 +282,7 @@ async def recall_memory(
     namespace: NamespaceArg,
     top_k: TopKArg = None,
     include_hebbian: IncludeHebbianArg = True,
+    include_shared: IncludeSharedArg = True,
 ) -> McpRecallResponse:
     """Recall relevant active memories through the Phase 2 pipeline."""
     async with AsyncSessionLocal() as db:
@@ -266,6 +296,7 @@ async def recall_memory(
                 query=query,
                 top_k=top_k or settings.recall_top_k,
                 include_hebbian=include_hebbian,
+                include_shared=include_shared,
             )
             await db.commit()
             return McpRecallResponse(
@@ -275,6 +306,7 @@ async def recall_memory(
                     McpRecalledMemory(
                         id=candidate.memory.id,
                         namespace=candidate.memory.namespace,
+                        scope=candidate.memory.scope,
                         raw_content=candidate.memory.raw_content,
                         type=candidate.memory.type,
                         base_importance=candidate.memory.base_importance,
@@ -286,6 +318,7 @@ async def recall_memory(
                             retrieval_score=candidate.retrieval_score,
                             rerank_score=candidate.rerank_score,
                             activation_score=candidate.activation_score or 0.0,
+                            scope_affinity_score=candidate.scope_affinity_score or 0.0,
                             final_score=candidate.final_score or 0.0,
                             vector_score=candidate.vector_score,
                             text_score=candidate.text_score,
@@ -390,6 +423,7 @@ async def submit_memory(
     content: MemoryContentArg,
     intent: MemoryIntent = "auto",
     memory_type: DurableMemoryType | None = None,
+    scope: MemoryScopeArg = None,
     evidence: EvidenceArg = None,
     confidence: ConfidenceArg = None,
 ) -> MemorySubmissionReport:
@@ -412,6 +446,7 @@ async def submit_memory(
                 content=content,
                 intent=intent,
                 memory_type=memory_type,
+                scope=scope,
                 evidence=evidence,
                 confidence=confidence,
             )
@@ -434,7 +469,8 @@ async def submit_memory(
         "when_to_use": [
             "Before diagnosing whether a namespace has stored memory.",
             "When checking counts by memory type or lifecycle status.",
-            "For project memory, use a repo-scoped namespace like repo:<repo_name> instead of the service name camillo.",
+            "For project memory, use a repo-scoped namespace like repo:<repo_name> "
+            "instead of the service name camillo.",
         ],
         "when_not_to_use": [
             "For retrieving memory content; use recall_memory.",

@@ -23,6 +23,7 @@ class Candidate:
     rrf_score: float | None = None
     rerank_score: float | None = None
     activation_score: float | None = None
+    scope_affinity_score: float | None = None
     final_score: float | None = None
     source: str = "primary"
     linked_from: UUID | None = None

@@ -33,6 +33,7 @@ async def recall(request: RecallRequest, db: AsyncSession = Depends(get_db)) -> 
         query=request.query,
         top_k=request.top_k or settings.recall_top_k,
         include_hebbian=request.include_hebbian,
+        include_shared=request.include_shared,
     )
     await db.commit()
 
@@ -43,6 +44,7 @@ async def recall(request: RecallRequest, db: AsyncSession = Depends(get_db)) -> 
             RecalledMemory(
                 id=candidate.memory.id,
                 namespace=candidate.memory.namespace,
+                scope=candidate.memory.scope,
                 raw_content=candidate.memory.raw_content,
                 type=candidate.memory.type,
                 base_importance=candidate.memory.base_importance,
@@ -55,6 +57,7 @@ async def recall(request: RecallRequest, db: AsyncSession = Depends(get_db)) -> 
                     retrieval_score=candidate.retrieval_score,
                     rerank_score=candidate.rerank_score,
                     activation_score=candidate.activation_score or 0.0,
+                    scope_affinity_score=candidate.scope_affinity_score or 0.0,
                     final_score=candidate.final_score or 0.0,
                     vector_score=candidate.vector_score,
                     text_score=candidate.text_score,

@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from camillo.schemas.recall import ScoreBreakdown
 
@@ -13,6 +13,7 @@ class MemoryRead(BaseModel):
     id: UUID
     namespace: str
     session_id: str | None
+    scope: str
     raw_content: str
     type: str
     status: str
@@ -34,6 +35,7 @@ class MemoryStatsResponse(BaseModel):
     total: int
     by_type: dict[str, int]
     by_status: dict[str, int]
+    by_scope: dict[str, int] = Field(default_factory=dict)
 
 
 class McpRecalledMemory(BaseModel):
@@ -41,6 +43,7 @@ class McpRecalledMemory(BaseModel):
 
     id: UUID
     namespace: str
+    scope: str
     raw_content: str
     type: str
     base_importance: float

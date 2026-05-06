@@ -80,6 +80,40 @@ async def test_submit_memory_creates_new_memory_when_no_related_memories_exist()
     assert report.created_memory_id is not None
     assert len(memory_store.memories) == 1
     assert memory_store.memories[0].type == "semantic"
+    assert memory_store.memories[0].scope == "local"
+
+
+@pytest.mark.asyncio
+async def test_submit_memory_defaults_scope_from_memory_type() -> None:
+    """Keep reusable durable memory scoping automatic for callers."""
+    memory_store = FakeMemoryStore()
+    llm_service = FakeLLMService()
+    service = _service(memory_store, llm_service)
+
+    await service.submit_memory(
+        "repo",
+        "Run pytest before changing Docker.",
+        memory_type="procedural",
+    )
+
+    assert memory_store.memories[0].scope == "shared"
+
+
+@pytest.mark.asyncio
+async def test_submit_memory_accepts_explicit_scope() -> None:
+    """Allow callers to override memory-type scope defaults."""
+    memory_store = FakeMemoryStore()
+    llm_service = FakeLLMService()
+    service = _service(memory_store, llm_service)
+
+    await service.submit_memory(
+        "repo",
+        "Prefer concise answers.",
+        memory_type="preference",
+        scope="global",
+    )
+
+    assert memory_store.memories[0].scope == "global"
 
 
 @pytest.mark.asyncio
