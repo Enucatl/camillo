@@ -23,6 +23,25 @@ x-camillo-env: &camillo-env
   RECALL_VECTOR_LIMIT:
   RECALL_FULL_TEXT_SEARCH_LIMIT:
   HEBBIAN_EDGE_THRESHOLD:
+  DREAMING_ENABLED:
+  DREAMING_INTERVAL_SECONDS:
+  DREAMING_RUN_ON_START:
+  DREAMING_NAMESPACE:
+  DREAMING_DRY_RUN:
+  DREAMING_SEED_LIMIT:
+  DREAMING_CLUSTER_MAX_SIZE:
+  DREAMING_CLUSTER_MIN_SIZE:
+  DREAMING_MAX_DEPTH:
+  DREAMING_MIN_SEED_ACTIVATION:
+  DREAMING_MIN_EDGE_WEIGHT:
+  DREAMING_MAX_CLUSTER_AGE_DAYS:
+  DREAMING_MIN_CLUSTER_TOTAL_IMPORTANCE:
+  DREAMING_MIN_SYNTHESIS_CONFIDENCE:
+  DREAMING_MAX_MEMORIES_PER_CLUSTER:
+  DREAMING_SOURCE_PENALTY:
+  DREAMING_MIN_SOURCE_IMPORTANCE:
+  DREAMING_RELATION_CONFIDENCE:
+  DREAMING_MODEL:
   MCP_ALLOWED_HOSTS: ${MCP_ALLOWED_HOSTS:-camillo.${DOCKER_DOMAIN}}
 
 services:
@@ -96,6 +115,23 @@ services:
       sipario:
         condition: service_completed_successfully
     command: ["uvicorn", "camillo.main:app", "--host", "0.0.0.0", "--port", "8000"]
+
+  dreaming_worker:
+    extends:
+      file: ../compose-security-baseline/hardening.yml
+      service: hardened-medium
+    build: .
+    environment: *camillo-env
+    secrets:
+      - postgres_password
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+    networks:
+      - internal
+    depends_on:
+      sipario:
+        condition: service_completed_successfully
+    command: ["python", "-m", "camillo.worker", "--loop"]
 
 volumes:
   postgres:

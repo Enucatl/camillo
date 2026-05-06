@@ -4,7 +4,13 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.responses import Response
 
-from camillo.api import routes_health, routes_ingest, routes_recall, routes_submit_memory
+from camillo.api import (
+    routes_dreaming,
+    routes_health,
+    routes_ingest,
+    routes_recall,
+    routes_submit_memory,
+)
 from camillo.logging_config import configure_logging
 from camillo.mcp_server.server import mcp
 from camillo.settings import settings
@@ -34,6 +40,7 @@ app.include_router(routes_health.router)
 app.include_router(routes_ingest.router)
 app.include_router(routes_recall.router)
 app.include_router(routes_submit_memory.router)
+app.include_router(routes_dreaming.router)
 
 
 @app.get("/mcp", include_in_schema=False)

@@ -6,6 +6,7 @@ from itertools import combinations
 from typing import Any
 from uuid import UUID, uuid4
 
+from camillo.cognitive.cognitive_math import calculate_activation
 from camillo.db.models import Memory
 
 
@@ -335,6 +336,83 @@ class FakeMemoryStore:
             if memory.id in memory_id_set and (not active_only or memory.status == "active")
         ]
 
+    async def select_dream_seeds(
+        self,
+        namespace: str,
+        *,
+        limit: int,
+        min_activation: float,
+        decay_rate: float,
+        max_age_days: int | None = None,
+    ) -> list[Memory]:
+        """Select active episodic dream seeds using production activation math."""
+        if limit <= 0:
+            return []
+
+        now = datetime.now(UTC)
+        scored = []
+        for memory in self.memories:
+            if (
+                memory.namespace != namespace
+                or memory.type != "episodic"
+                or memory.status != "active"
+            ):
+                continue
+            if max_age_days is not None and (now - memory.created_at).days > max_age_days:
+                continue
+            activation = calculate_activation(
+                memory.base_importance,
+                memory.access_count,
+                memory.last_accessed_at,
+                decay_rate=decay_rate,
+                now=now,
+            )
+            if activation >= min_activation:
+                scored.append((memory, activation))
+        scored.sort(key=lambda item: item[1], reverse=True)
+        return [memory for memory, _activation in scored[:limit]]
+
+    async def get_active_episodic_by_ids(
+        self,
+        memory_ids: list[UUID],
+        *,
+        namespace: str,
+    ) -> list[Memory]:
+        """Hydrate only active episodic fake memories for dream clusters."""
+        memory_id_set = set(memory_ids)
+        return [
+            memory
+            for memory in self.memories
+            if memory.id in memory_id_set
+            and memory.namespace == namespace
+            and memory.type == "episodic"
+            and memory.status == "active"
+        ]
+
+    async def mark_memories_consolidated_after_dream(
+        self,
+        memory_ids: list[UUID],
+        *,
+        created_memory_ids: list[UUID],
+        penalty: float,
+        min_importance: float,
+        dream_run_id: UUID,
+    ) -> None:
+        """Apply fake dreaming lifecycle updates for service tests."""
+        memory_id_set = set(memory_ids)
+        for memory in self.memories:
+            if memory.id not in memory_id_set:
+                continue
+            memory.status = "consolidated"
+            memory.base_importance = max(memory.base_importance * (1.0 - penalty), min_importance)
+            metadata = dict(memory.metadata_json or {})
+            metadata["dreaming"] = {
+                "consolidated_at": datetime.now(UTC).isoformat(),
+                "consolidated_into": [str(memory_id) for memory_id in created_memory_ids],
+                "dream_run_id": str(dream_run_id),
+            }
+            memory.metadata_json = metadata
+
     async def mark_accessed(self, memory_ids: list[UUID]) -> None:
         """Mutate fake memories so reinforcement assertions see side effects.
 
@@ -504,3 +582,43 @@ class FakeGraphStore:
         links = list(best_by_neighbor.values())
         links.sort(key=lambda item: item[2], reverse=True)
         return links
+
+    async def traverse_hebbian_cluster(
+        self,
+        seed_id: UUID,
+        *,
+        max_depth: int,
+        min_weight: float,
+        max_nodes: int,
+    ) -> list[tuple[UUID, float, int]]:
+        """Breadth-first traverse fake strong edges for dreaming tests."""
+        if max_nodes <= 0:
+            return []
+
+        visited = {seed_id}
+        discovered: list[tuple[UUID, float, int]] = [(seed_id, 0.0, 0)]
+        frontier: list[tuple[UUID, int]] = [(seed_id, 0)]
+        while frontier and len(discovered) < max_nodes:
+            current_id, depth = frontier.pop(0)
+            if depth >= max_depth:
+                continue
+
+            neighbors = []
+            for (left_id, right_id), weight in self.edges.items():
+                if weight < min_weight:
+                    continue
+                if left_id == current_id:
+                    neighbors.append((right_id, weight))
+                elif right_id == current_id:
+                    neighbors.append((left_id, weight))
+            neighbors.sort(key=lambda item: item[1], reverse=True)
+
+            for neighbor_id, weight in neighbors:
+                if neighbor_id in visited:
+                    continue
+                visited.add(neighbor_id)
+                discovered.append((neighbor_id, weight, depth + 1))
+                if len(discovered) >= max_nodes:
+                    break
+                frontier.append((neighbor_id, depth + 1))
+        return discovered

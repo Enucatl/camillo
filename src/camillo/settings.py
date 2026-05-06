@@ -76,6 +76,43 @@ class Settings(BaseSettings):
         default=1.0,
         alias="REINFORCEMENT_EDGE_INCREMENT",
     )
+    dreaming_enabled: bool = Field(default=True, alias="DREAMING_ENABLED")
+    dreaming_interval_seconds: int = Field(default=900, alias="DREAMING_INTERVAL_SECONDS")
+    dreaming_run_on_start: bool = Field(default=False, alias="DREAMING_RUN_ON_START")
+    dreaming_namespace: str = Field(default="default", alias="DREAMING_NAMESPACE")
+    dreaming_dry_run: bool = Field(default=False, alias="DREAMING_DRY_RUN")
+    dreaming_seed_limit: int = Field(default=5, alias="DREAMING_SEED_LIMIT")
+    dreaming_cluster_max_size: int = Field(default=12, alias="DREAMING_CLUSTER_MAX_SIZE")
+    dreaming_cluster_min_size: int = Field(default=2, alias="DREAMING_CLUSTER_MIN_SIZE")
+    dreaming_max_depth: int = Field(default=2, alias="DREAMING_MAX_DEPTH")
+    dreaming_min_seed_activation: float = Field(
+        default=0.35,
+        alias="DREAMING_MIN_SEED_ACTIVATION",
+    )
+    dreaming_min_edge_weight: float = Field(default=2.0, alias="DREAMING_MIN_EDGE_WEIGHT")
+    dreaming_max_cluster_age_days: int = Field(default=90, alias="DREAMING_MAX_CLUSTER_AGE_DAYS")
+    dreaming_min_cluster_total_importance: float = Field(
+        default=1.0,
+        alias="DREAMING_MIN_CLUSTER_TOTAL_IMPORTANCE",
+    )
+    dreaming_min_synthesis_confidence: float = Field(
+        default=0.6,
+        alias="DREAMING_MIN_SYNTHESIS_CONFIDENCE",
+    )
+    dreaming_max_memories_per_cluster: int = Field(
+        default=3,
+        alias="DREAMING_MAX_MEMORIES_PER_CLUSTER",
+    )
+    dreaming_source_penalty: float = Field(default=0.35, alias="DREAMING_SOURCE_PENALTY")
+    dreaming_min_source_importance: float = Field(
+        default=0.05,
+        alias="DREAMING_MIN_SOURCE_IMPORTANCE",
+    )
+    dreaming_relation_confidence: float = Field(
+        default=0.85,
+        alias="DREAMING_RELATION_CONFIDENCE",
+    )
+    dreaming_model: str | None = Field(default=None, alias="DREAMING_MODEL")
 
     @model_validator(mode="after")
     def build_database_url(self) -> Settings:

@@ -1,8 +1,9 @@
+from collections import deque
 from datetime import UTC, datetime
 from itertools import combinations
 from uuid import UUID
 
-from sqlalchemy import or_, select
+from sqlalchemy import desc, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from camillo.db.models import HebbianEdge
@@ -133,3 +134,62 @@ class GraphStore(GraphStoreProtocol):
         links = list(best_by_neighbor.values())
         links.sort(key=lambda item: (item[2], item[3]), reverse=True)
         return [(source_id, neighbor_id, weight) for source_id, neighbor_id, weight, _ in links]
+
+    async def traverse_hebbian_cluster(
+        self,
+        seed_id: UUID,
+        *,
+        max_depth: int,
+        min_weight: float,
+        max_nodes: int,
+    ) -> list[tuple[UUID, float, int]]:
+        """Breadth-first traverse strong Hebbian edges from one seed.
+
+        The graph store deliberately does not filter by memory type or status;
+        DreamingService hydrates active episodic rows afterward so lifecycle
+        policy stays in the memory store.
+
+        Args:
+            seed_id: Starting memory ID.
+            max_depth: Maximum number of edge hops from the seed.
+            min_weight: Minimum edge weight to traverse.
+            max_nodes: Hard cap on returned nodes.
+
+        Returns:
+            Tuples of memory ID, strongest traversed edge seen for that node,
+            and traversal depth.
+        """
+        if max_nodes <= 0:
+            return []
+
+        visited = {seed_id}
+        discovered: list[tuple[UUID, float, int]] = [(seed_id, 0.0, 0)]
+        queue: deque[tuple[UUID, int]] = deque([(seed_id, 0)])
+
+        while queue and len(discovered) < max_nodes:
+            current_id, depth = queue.popleft()
+            if depth >= max_depth:
+                continue
+
+            result = await self.db.execute(
+                select(HebbianEdge)
+                .where(
+                    HebbianEdge.weight >= min_weight,
+                    or_(
+                        HebbianEdge.source_id == current_id,
+                        HebbianEdge.target_id == current_id,
+                    ),
+                )
+                .order_by(desc(HebbianEdge.weight), desc(HebbianEdge.last_co_accessed_at))
+            )
+            for edge in result.scalars().all():
+                neighbor_id = edge.target_id if edge.source_id == current_id else edge.source_id
+                if neighbor_id in visited:
+                    continue
+                visited.add(neighbor_id)
+                discovered.append((neighbor_id, edge.weight, depth + 1))
+                if len(discovered) >= max_nodes:
+                    break
+                queue.append((neighbor_id, depth + 1))
+
+        return discovered

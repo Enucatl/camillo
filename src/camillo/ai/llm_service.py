@@ -1,4 +1,5 @@
 import json
+import re
 
 import litellm
 from loguru import logger
@@ -166,6 +167,49 @@ class LiteLLMService(CompletionProvider, EmbeddingProvider, Reranker):
             logger.exception("Failed to classify memory relationships; using fallback")
             return fallback
 
+    async def synthesize_dream(
+        self,
+        cluster_memories: list[str],
+        *,
+        namespace: str,
+    ) -> dict:
+        """Ask LiteLLM to promote a cluster into durable memory candidates.
+
+        Args:
+            cluster_memories: Raw episodic memory text in evidence-index order.
+            namespace: Partition used to keep synthesis context scoped.
+
+        Returns:
+            Parsed JSON dream output, or a conservative no-op fallback.
+        """
+        if not cluster_memories:
+            return _fallback_dream()
+
+        numbered_memories = "\n".join(
+            f"{index}. {memory}" for index, memory in enumerate(cluster_memories)
+        )
+        prompt = _render_dream_prompt(namespace, numbered_memories)
+        model = settings.dreaming_model or settings.litellm_completion_model
+        try:
+            response = await litellm.acompletion(
+                model=model,
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0,
+            )
+            content = response.choices[0].message.content or ""
+            parsed = json.loads(_strip_json_fence(content))
+            if not isinstance(parsed, dict):
+                return _fallback_dream()
+            memories = parsed.get("memories")
+            if not isinstance(memories, list):
+                parsed["memories"] = []
+            parsed["should_create_memory"] = bool(parsed.get("should_create_memory"))
+            parsed["summary"] = str(parsed.get("summary") or "")
+            return parsed
+        except Exception:
+            logger.exception("Failed to synthesize dream; using fallback")
+            return _fallback_dream()
+
 
 def _response_value(item: object, key: str) -> object | None:
     """Handle provider response shape drift behind one defensive accessor.
@@ -229,3 +273,111 @@ def _fallback_relationships(count: int) -> list[MemoryRelationshipClassification
         )
         for index in range(count)
     ]
+
+
+def _strip_json_fence(content: str) -> str:
+    """Remove common markdown code fences from provider JSON responses.
+
+    Args:
+        content: Raw completion content.
+
+    Returns:
+        A string intended for `json.loads`.
+    """
+    stripped = content.strip()
+    match = re.fullmatch(r"```(?:json)?\s*(.*?)\s*```", stripped, flags=re.DOTALL)
+    return match.group(1).strip() if match else stripped
+
+
+def _fallback_dream() -> dict:
+    """Return the conservative no-op dream shape.
+
+    Returns:
+        JSON-compatible dictionary matching dream synthesis expectations.
+    """
+    return {
+        "should_create_memory": False,
+        "summary": "Dream synthesis unavailable.",
+        "memories": [],
+    }
+
+
+def _render_dream_prompt(namespace: str, numbered_memories: str) -> str:
+    """Render the dreaming prompt without introducing a template dependency.
+
+    Args:
+        namespace: Memory partition being consolidated.
+        numbered_memories: Evidence-indexed source memory text.
+
+    Returns:
+        Provider prompt that asks for strict JSON.
+    """
+    return f"""You are consolidating a graph-connected cluster of raw episodic memories.
+
+These memories are connected through Hebbian edges, meaning they were adjacent,
+co-accessed, or repeatedly associated. Your job is to decide whether this
+cluster contains durable knowledge worth promoting into long-term semantic memory.
+
+Extract only stable, reusable information:
+- durable project decisions
+- user preferences
+- architectural constraints
+- recurring implementation patterns
+- procedural rules
+- relationship facts
+- long-lived goals or commitments
+
+Do not extract:
+- temporary chatter
+- one-off status updates
+- uncertain guesses
+- secrets or credentials
+- facts not supported by the cluster
+- overly broad claims that are only true in a narrow context
+
+If the cluster does not contain durable knowledge, return should_create_memory=false.
+
+When creating memories:
+- Be compact.
+- Be specific.
+- Preserve context.
+- Preserve uncertainty.
+- Do not invent facts.
+- Prefer one high-quality semantic memory over many weak memories.
+- Include evidence_indices pointing to the source memories that support the claim.
+
+Namespace:
+{namespace}
+
+Cluster memories:
+{numbered_memories}
+
+Return only valid JSON in this shape:
+{{
+  "should_create_memory": true,
+  "summary": "Short description of the durable pattern, or why none exists.",
+  "memories": [
+    {{
+      "content": "Compact durable memory.",
+      "memory_type": "semantic",
+      "confidence": 0.9,
+      "evidence_indices": [0, 1],
+      "rationale": "Why this is durable and supported."
+    }}
+  ]
+}}
+
+Allowed memory_type values:
+- semantic
+- preference
+- procedural
+- relationship
+- profile
+- core
+
+If nothing durable should be created:
+{{
+  "should_create_memory": false,
+  "summary": "No durable memory found.",
+  "memories": []
+}}"""

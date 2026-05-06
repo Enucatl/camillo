@@ -1,10 +1,11 @@
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import UUID
 
 from sqlalchemy import desc, func, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from camillo.cognitive.cognitive_math import calculate_activation
 from camillo.db.models import Memory
 from camillo.interfaces import MemoryStoreProtocol
 
@@ -167,6 +168,127 @@ class MemoryStore(MemoryStoreProtocol):
 
         result = await self.db.execute(select(Memory).where(*filters))
         return list(result.scalars().all())
+
+    async def select_dream_seeds(
+        self,
+        namespace: str,
+        *,
+        limit: int,
+        min_activation: float,
+        decay_rate: float,
+        max_age_days: int | None = None,
+    ) -> list[Memory]:
+        """Select active episodic memories eligible to initiate dreaming.
+
+        Consolidated episodic rows remain available for audit and optional
+        recall, but this query is the hard anti-repeat boundary for dreaming.
+
+        Args:
+            namespace: Partition whose episodic memories should be considered.
+            limit: Maximum number of seed memories to return.
+            min_activation: Minimum ACT-R activation required for a seed.
+            decay_rate: Recency decay rate passed to activation scoring.
+            max_age_days: Optional age cap for seed candidates.
+
+        Returns:
+            Active episodic memories sorted by descending activation.
+        """
+        if limit <= 0:
+            return []
+
+        filters = [
+            Memory.namespace == namespace,
+            Memory.type == "episodic",
+            Memory.status == "active",
+        ]
+        if max_age_days is not None:
+            filters.append(Memory.created_at >= datetime.now(UTC) - timedelta(days=max_age_days))
+
+        result = await self.db.execute(select(Memory).where(*filters))
+        scored = []
+        for memory in result.scalars().all():
+            activation = calculate_activation(
+                memory.base_importance,
+                memory.access_count,
+                memory.last_accessed_at,
+                decay_rate=decay_rate,
+            )
+            if activation >= min_activation:
+                scored.append((memory, activation))
+
+        scored.sort(key=lambda item: item[1], reverse=True)
+        return [memory for memory, _activation in scored[:limit]]
+
+    async def get_active_episodic_by_ids(
+        self,
+        memory_ids: list[UUID],
+        *,
+        namespace: str,
+    ) -> list[Memory]:
+        """Fetch dreamable memories from a graph traversal.
+
+        Args:
+            memory_ids: IDs discovered through Hebbian traversal.
+            namespace: Partition guard for multi-tenant memory storage.
+
+        Returns:
+            Active episodic memories matching the supplied IDs.
+        """
+        if not memory_ids:
+            return []
+
+        result = await self.db.execute(
+            select(Memory).where(
+                Memory.id.in_(memory_ids),
+                Memory.namespace == namespace,
+                Memory.type == "episodic",
+                Memory.status == "active",
+            )
+        )
+        return list(result.scalars().all())
+
+    async def mark_memories_consolidated_after_dream(
+        self,
+        memory_ids: list[UUID],
+        *,
+        created_memory_ids: list[UUID],
+        penalty: float,
+        min_importance: float,
+        dream_run_id: UUID,
+    ) -> None:
+        """Mark source episodes as consolidated after successful promotion.
+
+        Args:
+            memory_ids: Source episodic memories that supported the dream.
+            created_memory_ids: Semantic memories created or reinforced.
+            penalty: Fractional importance reduction for source episodes.
+            min_importance: Lower bound for source episode importance.
+            dream_run_id: Audit run that performed consolidation.
+        """
+        if not memory_ids:
+            return
+
+        result = await self.db.execute(
+            select(Memory).where(
+                Memory.id.in_(memory_ids),
+                Memory.type == "episodic",
+                Memory.status == "active",
+            )
+        )
+        now = datetime.now(UTC).isoformat()
+        consolidated_into = [str(memory_id) for memory_id in created_memory_ids]
+        for memory in result.scalars().all():
+            metadata = dict(memory.metadata_json or {})
+            metadata["dreaming"] = {
+                **dict(metadata.get("dreaming") or {}),
+                "consolidated_at": now,
+                "consolidated_into": consolidated_into,
+                "dream_run_id": str(dream_run_id),
+            }
+            memory.status = "consolidated"
+            memory.base_importance = max(memory.base_importance * (1.0 - penalty), min_importance)
+            memory.metadata_json = metadata
+        await self.db.flush()
 
     async def mark_accessed(self, memory_ids: list[UUID]) -> None:
         """Update recall bookkeeping for memories surfaced to a caller."""
