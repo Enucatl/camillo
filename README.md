@@ -1,14 +1,50 @@
 # Camillo
 
-Camillo is a Python 3.14 cognitive memory service. It stores conversation
-episodes, durable facts, preferences, procedures, and profile-like context in
-PostgreSQL with pgvector, then exposes recall and memory mutation through both a
-FastAPI HTTP API and a Streamable HTTP MCP server.
+<p align="center">
+  <img src="docs/logo.png" alt="Camillo logo" width="180">
+</p>
 
-The implemented design is intentionally Postgres-native and modular:
+<p align="center">
+  <strong>Long-term memory for agents that learn through recall, association, and consolidation.</strong>
+</p>
 
-- PostgreSQL stores memory rows, vector embeddings, lifecycle fields, Hebbian
-  associative edges, semantic memory relations, and dreaming run audit records.
+Camillo is a Python memory backbone for agentic AI. It gives agents a durable
+memory system that can record conversation history, recall relevant context,
+strengthen useful associations, reconcile durable facts, and consolidate noisy
+episodes into reusable knowledge.
+
+## What It Does
+
+Camillo turns agent conversations into structured long-term memory:
+
+- Records every conversation turn as an `episodic` memory.
+- Retrieves context with hybrid vector and lexical search.
+- Strengthens links between memories that are recalled together, so future
+  recall becomes more associative over time.
+- Reconciles durable facts, preferences, procedures, and profile-like context
+  instead of blindly appending duplicates.
+- Runs background dreaming passes that consolidate repeated episodes into more
+  general memories and reduce noise from raw interaction history.
+
+## Why It Matters
+
+Most agents either forget everything between sessions or rely on a flat RAG
+store. Camillo treats memory as a living system: recall changes future recall,
+important experiences can become durable knowledge, and unused memories decay
+unless they are reinforced.
+
+The system is intentionally Postgres-native. PostgreSQL stores memory rows,
+vector embeddings, lifecycle fields, associative links, semantic relations, and
+dreaming audit records in one operational database.
+
+## Current Architecture
+
+![Camillo memory architecture](docs/diagram.png)
+
+The implemented design is modular:
+
+- MCP exposes a small tool surface for agents:
+  `recall_memory`, `record_interaction`, `submit_memory`, and `memory_stats`.
 - FastAPI owns the public HTTP routes and mounts the MCP application at `/mcp`.
 - Cognitive services orchestrate ingestion, recall, reconciliation, graph
   reinforcement, and dreaming without owning provider or database details.
@@ -16,12 +52,6 @@ The implemented design is intentionally Postgres-native and modular:
   relationship classification, and dream synthesis.
 - Docker Compose runs the app as `teatro`, migrations as `sipario`, PostgreSQL
   as `postgres`, and background consolidation as `dreaming_worker`.
-
-Use stable namespaces such as `repo:<repo_name>`, `user:<id>`, or
-`workspace:<id>` to isolate memory. `camillo` is the service name, not the
-default memory namespace.
-
-## Current Architecture
 
 ```text
 Agent / IDE / HTTP client
@@ -63,6 +93,10 @@ pipelines, not as a single RAG function. Retrieval, ranking, lifecycle policy,
 semantic relations, associative graph behavior, and consolidation can change
 independently because the services depend on ports rather than concrete
 provider or database code.
+
+Use stable namespaces such as `repo:<repo_name>`, `user:<id>`, or
+`workspace:<id>` to isolate memory. `camillo` is the service name, not the
+default memory namespace.
 
 ## Runtime Services
 
