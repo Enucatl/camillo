@@ -14,13 +14,13 @@ RUN groupadd --gid 10000 camillo \
 USER camillo
 
 COPY --chown=camillo:camillo pyproject.toml uv.lock README.md ./
-RUN uv sync --locked --extra dev --extra trace --no-install-project
+RUN uv sync --locked --no-dev --extra trace --no-install-project
 
 COPY --chown=camillo:camillo src ./src
 COPY --chown=camillo:camillo alembic.ini ./
 COPY --chown=camillo:camillo migrate ./migrate
 
-RUN uv sync --locked --extra dev --extra trace
+RUN uv sync --locked --no-dev --extra trace
 
 EXPOSE 8000
 

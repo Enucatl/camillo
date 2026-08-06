@@ -132,6 +132,18 @@ services:
       sipario:
         condition: service_completed_successfully
     command: ["python", "-m", "camillo.worker", "--loop"]
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import os,time; p='/tmp/dreaming-worker-heartbeat'; assert os.path.exists(p) and time.time()-os.path.getmtime(p) < 2*int(os.environ.get('DREAMING_INTERVAL_SECONDS', '900'))",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
 
 volumes:
   postgres:

@@ -1,5 +1,6 @@
 import argparse
 import asyncio
+from pathlib import Path
 
 from loguru import logger
 
@@ -13,6 +14,13 @@ from camillo.stores.dream_store import DreamStore
 from camillo.stores.graph_store import GraphStore
 from camillo.stores.memory_store import MemoryStore
 from camillo.stores.relation_store import RelationStore
+
+WORKER_HEARTBEAT_PATH = Path("/tmp/dreaming-worker-heartbeat")
+
+
+def write_heartbeat() -> None:
+    """Record that the worker loop is alive for the container healthcheck."""
+    WORKER_HEARTBEAT_PATH.touch()
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -101,6 +109,7 @@ async def main_async(argv: list[str] | None = None) -> None:
         await run_once(namespace, dry_run=dry_run)
 
     while True:
+        write_heartbeat()
         await asyncio.sleep(interval)
         await run_once(namespace, dry_run=dry_run)
 
