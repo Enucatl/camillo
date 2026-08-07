@@ -7,6 +7,8 @@ from loguru import logger
 from camillo.interfaces import EmbeddingProvider, Reranker
 from camillo.settings import settings
 
+OPENROUTER_RERANK_API_BASE = "https://openrouter.ai/api/v1/rerank"
+
 
 class LiteLLMService(EmbeddingProvider, Reranker):
     """LiteLLM adapter for embeddings, optional reranking, and dreaming."""
@@ -24,8 +26,12 @@ class LiteLLMService(EmbeddingProvider, Reranker):
         if not settings.litellm_rerank_model:
             return fallback
         try:
+            rerank_kwargs = _rerank_provider_kwargs(settings.litellm_rerank_model)
             response = await litellm.arerank(
-                model=settings.litellm_rerank_model, query=query, documents=documents
+                model=rerank_kwargs.pop("model"),
+                query=query,
+                documents=documents,
+                **rerank_kwargs,
             )
             scores = [0.0] * len(documents)
             for item in response.results:
@@ -58,6 +64,20 @@ class LiteLLMService(EmbeddingProvider, Reranker):
         except Exception:
             logger.exception("Dream synthesis failed")
             return {"content": None, "confidence": 0.0}
+
+
+def _rerank_provider_kwargs(model: str) -> dict[str, str]:
+    """Route OpenRouter rerank models through its Cohere-compatible endpoint."""
+    if settings.openrouter_api_key and (
+        model.startswith("openrouter/") or model.startswith("cohere/rerank")
+    ):
+        return {
+            "model": model.removeprefix("openrouter/"),
+            "custom_llm_provider": "litellm_proxy",
+            "api_base": OPENROUTER_RERANK_API_BASE,
+            "api_key": settings.openrouter_api_key,
+        }
+    return {"model": model}
 
 
 def _value(item: object, key: str) -> object | None:
