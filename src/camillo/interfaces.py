@@ -9,7 +9,7 @@ class EmbeddingProvider(ABC):
     """Abstract adapter for the configured embedding provider."""
 
     @abstractmethod
-    async def get_embedding(self, text: str) -> list[float]:
+    async def get_embedding(self, text: str, *, domain: str = "document_embedding") -> list[float]:
         """Embed text in the memory store's vector space."""
 
 
@@ -17,7 +17,13 @@ class Reranker(ABC):
     """Optional provider adapter for final relevance refinement."""
 
     @abstractmethod
-    async def rerank_results(self, query: str, documents: list[str]) -> list[float]:
+    async def rerank_results(
+        self,
+        query: str,
+        documents: list[str],
+        *,
+        domain: str = "recall_rerank",
+    ) -> list[float]:
         """Return one relevance score for each document."""
 
 

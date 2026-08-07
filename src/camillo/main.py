@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.responses import Response
 
+from camillo.ai.llm_service import get_inference_service
 from camillo.api import (
     routes_dreaming,
     routes_health,
@@ -33,7 +34,10 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     the combined API/MCP container must enter FastMCP's session manager here.
     """
     async with mcp_app.router.lifespan_context(mcp_app):
-        yield
+        try:
+            yield
+        finally:
+            await get_inference_service().close()
 
 
 app = FastAPI(title=settings.app_name, lifespan=lifespan)

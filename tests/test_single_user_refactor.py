@@ -33,10 +33,12 @@ def test_importance_is_deterministic() -> None:
 
 
 class Provider:
-    async def get_embedding(self, _text: str) -> list[float]:
+    async def get_embedding(self, _text: str, *, domain: str = "document_embedding") -> list[float]:
         return [1.0]
 
-    async def rerank_results(self, _query: str, documents: list[str]) -> list[float]:
+    async def rerank_results(
+        self, _query: str, documents: list[str], *, domain: str = "recall_rerank"
+    ) -> list[float]:
         return [1.0] * len(documents)
 
 

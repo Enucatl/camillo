@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from camillo.ai.llm_service import LiteLLMService
+from camillo.ai.llm_service import get_inference_service
 from camillo.cognitive.dreaming_service import DreamingService
 from camillo.cognitive.recall_service import RecallService
 from camillo.cognitive.reconciliation_service import MemoryReconciliationService
@@ -17,7 +17,7 @@ router = APIRouter()
 async def dream(request: DreamRequest, db: AsyncSession = Depends(get_db)) -> DreamRunReport:
     """Run one operational dreaming pass."""
     store = MemoryStore(db)
-    provider = LiteLLMService()
+    provider = get_inference_service()
     service = DreamingService(
         store,
         DreamStore(db),

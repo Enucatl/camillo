@@ -25,7 +25,7 @@ class IngestionService:
             raise ValueError("Content is empty after redaction")
         memory = await self.memory_store.insert_memory(
             raw_content=raw_content,
-            embedding=await self.llm_service.get_embedding(raw_content),
+            embedding=await self.llm_service.get_embedding(raw_content, domain="ingest_embedding"),
             memory_type="episode",
             base_importance=score_interaction_importance(raw_content, ""),
             workspace=workspace,

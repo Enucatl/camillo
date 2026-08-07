@@ -20,7 +20,7 @@ class RecallService:
 
     async def search(self, query: str, top_k: int, workspace: str | None = None) -> list[Candidate]:
         """Retrieve without mutation for deduplication, replacement, and dreaming."""
-        embedding = await self.llm_service.get_embedding(query)
+        embedding = await self.llm_service.get_embedding(query, domain="recall_embedding")
         vector = await self.memory_store.vector_candidates(embedding, settings.recall_vector_limit)
         lexical = await self.memory_store.full_text_search_candidates(
             query, settings.recall_full_text_search_limit
@@ -34,7 +34,9 @@ class RecallService:
         if settings.rerank_enabled and candidates:
             scores = normalize_scores(
                 await self.llm_service.rerank_results(
-                    query, [candidate.memory.raw_content for candidate in candidates]
+                    query,
+                    [candidate.memory.raw_content for candidate in candidates],
+                    domain="recall_rerank",
                 )
             )
             for candidate, score in zip(candidates, scores, strict=False):

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from camillo.ai.llm_service import LiteLLMService
+from camillo.ai.llm_service import get_inference_service
 from camillo.cognitive.ingestion_service import IngestionService
 from camillo.db.session import get_db
 from camillo.schemas.ingest import IngestRequest, IngestResponse
@@ -13,7 +13,7 @@ router = APIRouter()
 @router.post("/ingest", response_model=IngestResponse)
 async def ingest(request: IngestRequest, db: AsyncSession = Depends(get_db)) -> IngestResponse:
     """Capture an automatic redacted conversation episode."""
-    memory = await IngestionService(MemoryStore(db), LiteLLMService()).ingest_interaction(
+    memory = await IngestionService(MemoryStore(db), get_inference_service()).ingest_interaction(
         request.user_msg, request.ai_msg, request.session_id, request.workspace
     )
     await db.commit()

@@ -8,6 +8,14 @@ x-camillo-env: &camillo-env
   POSTGRES_HOST: postgres
   POSTGRES_PORT:
   EMBEDDING_DIM:
+  INFERENCE_CHAT_MODEL:
+  INFERENCE_EMBEDDING_MODEL:
+  INFERENCE_RERANK_MODEL:
+  INFERENCE_CHAT_ENDPOINT:
+  INFERENCE_EMBEDDING_ENDPOINT:
+  INFERENCE_RERANK_ENDPOINT:
+  # Transitional aliases for the existing deployment .env; remove after the
+  # INFERENCE_* variables are adopted everywhere.
   LITELLM_COMPLETION_MODEL:
   LITELLM_EMBEDDING_MODEL:
   LITELLM_RERANK_MODEL:

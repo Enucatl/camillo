@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from camillo.ai.llm_service import LiteLLMService
+from camillo.ai.llm_service import get_inference_service
 from camillo.cognitive.recall_service import RecallService
 from camillo.db.session import get_db
 from camillo.schemas.recall import RecalledMemory, RecallRequest, RecallResponse, ScoreBreakdown
@@ -14,7 +14,7 @@ router = APIRouter()
 @router.post("/recall", response_model=RecallResponse)
 async def recall(request: RecallRequest, db: AsyncSession = Depends(get_db)) -> RecallResponse:
     """Return active corpus memories and reinforce public recall results."""
-    service = RecallService(MemoryStore(db), LiteLLMService())
+    service = RecallService(MemoryStore(db), get_inference_service())
     candidates = await service.recall(
         request.query, request.top_k or settings.recall_top_k, request.workspace
     )

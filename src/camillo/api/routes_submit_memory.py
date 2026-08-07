@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from camillo.ai.llm_service import LiteLLMService
+from camillo.ai.llm_service import get_inference_service
 from camillo.cognitive.recall_service import RecallService
 from camillo.cognitive.reconciliation_service import MemoryReconciliationService
 from camillo.db.session import get_db
@@ -19,7 +19,7 @@ router = APIRouter()
 def _service(db: AsyncSession) -> MemoryReconciliationService:
     """Build the explicit durable-memory operation boundary."""
     store = MemoryStore(db)
-    provider = LiteLLMService()
+    provider = get_inference_service()
     return MemoryReconciliationService(store, RecallService(store, provider), provider)
 
 

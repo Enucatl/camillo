@@ -2,7 +2,7 @@ from functools import lru_cache
 from pathlib import Path
 from urllib.parse import quote
 
-from pydantic import Field, model_validator
+from pydantic import AliasChoices, Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -38,9 +38,30 @@ class Settings(BaseSettings):
     postgres_host: str = Field(default="postgres", alias="POSTGRES_HOST")
     postgres_port: int = Field(default=5432, alias="POSTGRES_PORT")
     embedding_dim: int = Field(alias="EMBEDDING_DIM")
-    litellm_completion_model: str = Field(alias="LITELLM_COMPLETION_MODEL")
-    litellm_embedding_model: str = Field(alias="LITELLM_EMBEDDING_MODEL")
-    litellm_rerank_model: str | None = Field(default=None, alias="LITELLM_RERANK_MODEL")
+    completion_model: str = Field(
+        validation_alias=AliasChoices("INFERENCE_CHAT_MODEL", "LITELLM_COMPLETION_MODEL")
+    )
+    embedding_model: str = Field(
+        validation_alias=AliasChoices("INFERENCE_EMBEDDING_MODEL", "LITELLM_EMBEDDING_MODEL")
+    )
+    rerank_model: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("INFERENCE_RERANK_MODEL", "LITELLM_RERANK_MODEL"),
+    )
+    chat_endpoint: str = Field(
+        default="https://openrouter.ai/api/v1",
+        validation_alias=AliasChoices("INFERENCE_CHAT_ENDPOINT", "OPENROUTER_CHAT_ENDPOINT"),
+    )
+    embedding_endpoint: str = Field(
+        default="https://openrouter.ai/api/v1",
+        validation_alias=AliasChoices(
+            "INFERENCE_EMBEDDING_ENDPOINT", "OPENROUTER_EMBEDDING_ENDPOINT"
+        ),
+    )
+    rerank_endpoint: str = Field(
+        default="https://openrouter.ai/api/v1",
+        validation_alias=AliasChoices("INFERENCE_RERANK_ENDPOINT", "OPENROUTER_RERANK_ENDPOINT"),
+    )
     openrouter_api_key: str | None = Field(default=None, alias="OPENROUTER_API_KEY")
     phoenix_tracing_enabled: bool = Field(default=False, alias="PHOENIX_TRACING_ENABLED")
     phoenix_collector_endpoint: str = Field(

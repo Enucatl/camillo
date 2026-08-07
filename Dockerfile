@@ -7,6 +7,11 @@ ENV PATH="/app/.venv/bin:$PATH"
 
 WORKDIR /app
 
+USER root
+RUN apt-get update \
+    && apt-get install --no-install-recommends --yes git \
+    && rm -rf /var/lib/apt/lists/*
+
 RUN groupadd --gid 10000 camillo \
     && useradd --uid 10000 --gid 10000 --home-dir /app --no-create-home --shell /usr/sbin/nologin camillo \
     && chown camillo:camillo /app

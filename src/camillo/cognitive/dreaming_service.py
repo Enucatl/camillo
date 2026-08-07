@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from camillo.ai.llm_service import LiteLLMService
+from camillo.ai.llm_service import InferenceService
 from camillo.cognitive.reconciliation_service import MemoryReconciliationService
 from camillo.schemas.dreaming import DreamRunReport
 from camillo.settings import settings
@@ -16,7 +16,7 @@ class DreamingService:
         memory_store: MemoryStore,
         dream_store: DreamStore,
         reconciliation_service: MemoryReconciliationService,
-        llm_service: LiteLLMService,
+        llm_service: InferenceService,
     ):
         """Wire storage, audit, synthesis, and normal deduplication policy."""
         self.memory_store = memory_store

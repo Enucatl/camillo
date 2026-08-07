@@ -39,7 +39,7 @@ class MemoryReconciliationService:
             return MemorySubmissionReport(
                 outcome="rejected", message="Content is empty after redaction."
             )
-        embedding = await self.llm_service.get_embedding(content)
+        embedding = await self.llm_service.get_embedding(content, domain="durable_memory_embedding")
         candidates = await self.recall_service.search(content, top_k=10, workspace=workspace)
         normalized = _normalize(content)
         exact = next(
@@ -95,7 +95,9 @@ class MemoryReconciliationService:
             return MemorySubmissionReport(
                 outcome="rejected", message="Content is empty after redaction."
             )
-        embedding = await self.llm_service.get_embedding(redacted)
+        embedding = await self.llm_service.get_embedding(
+            redacted, domain="durable_memory_embedding"
+        )
         replacement = await self.memory_store.insert_memory(
             raw_content=redacted,
             embedding=embedding,

@@ -1,45 +1,71 @@
 import json
 import re
+from functools import lru_cache
 
-import litellm
+import niquests
 from loguru import logger
+from shared_inference import InferenceClient
 
 from camillo.interfaces import EmbeddingProvider, Reranker
 from camillo.settings import settings
 
-OPENROUTER_RERANK_API_BASE = "https://openrouter.ai/api/v1/rerank"
 
+class InferenceService(EmbeddingProvider, Reranker):
+    """Shared inference adapter for embeddings, reranking, and dreaming."""
 
-class LiteLLMService(EmbeddingProvider, Reranker):
-    """LiteLLM adapter for embeddings, optional reranking, and dreaming."""
+    def __init__(self) -> None:
+        self._session = niquests.AsyncSession(timeout=120)
+        self._chat = InferenceClient(
+            base_url=settings.chat_endpoint,
+            api_key=settings.openrouter_api_key,
+            provider="openrouter",
+            domain="camillo",
+            session=self._session,
+        )
+        self._embedding = InferenceClient(
+            base_url=settings.embedding_endpoint,
+            api_key=settings.openrouter_api_key,
+            provider="openrouter",
+            domain="camillo",
+            session=self._session,
+        )
+        self._rerank = InferenceClient(
+            base_url=settings.rerank_endpoint,
+            api_key=settings.openrouter_api_key,
+            provider="openrouter",
+            domain="camillo",
+            session=self._session,
+        )
 
-    async def get_embedding(self, text: str) -> list[float]:
+    async def close(self) -> None:
+        """Close the shared provider session during application shutdown."""
+        await self._session.close()
+
+    async def get_embedding(self, text: str, *, domain: str = "document_embedding") -> list[float]:
         """Generate an embedding for safe, already-redacted text."""
-        response = await litellm.aembedding(model=settings.litellm_embedding_model, input=[text])
-        return [float(value) for value in response.data[0]["embedding"]]
+        response = await self._embedding.embed(
+            model=settings.embedding_model, input=[text], domain=domain
+        )
+        return response.embeddings[0]
 
-    async def rerank_results(self, query: str, documents: list[str]) -> list[float]:
+    async def rerank_results(
+        self, query: str, documents: list[str], *, domain: str = "recall_rerank"
+    ) -> list[float]:
         """Return provider relevance scores, falling back to stable rank order."""
         if not documents:
             return []
         fallback = [1.0 - index / max(len(documents), 1) * 0.2 for index in range(len(documents))]
-        if not settings.litellm_rerank_model:
+        if not settings.rerank_model:
             return fallback
         try:
-            rerank_kwargs = _rerank_provider_kwargs(settings.litellm_rerank_model)
-            response = await litellm.arerank(
-                model=rerank_kwargs.pop("model"),
-                query=query,
-                documents=documents,
-                **rerank_kwargs,
+            model = settings.rerank_model.removeprefix("openrouter/")
+            response = await self._rerank.rerank(
+                model=model, query=query, documents=documents, domain=domain
             )
             scores = [0.0] * len(documents)
-            for item in response.results:
-                index = int(_value(item, "index") or -1)
+            for index, score in zip(response.indices, response.scores, strict=False):
                 if 0 <= index < len(scores):
-                    scores[index] = float(
-                        _value(item, "relevance_score") or _value(item, "score") or 0.0
-                    )
+                    scores[index] = score
             return scores
         except Exception:
             logger.exception("Reranking failed; using fallback order")
@@ -54,38 +80,26 @@ class LiteLLMService(EmbeddingProvider, Reranker):
             "content, memory_type, confidence.\n" + "\n".join(cluster_memories)
         )
         try:
-            response = await litellm.acompletion(
-                model=settings.dreaming_model or settings.litellm_completion_model,
+            response = await self._chat.complete(
+                model=settings.dreaming_model or settings.completion_model,
                 messages=[{"role": "user", "content": prompt}],
+                domain="dream_consolidation",
                 temperature=0,
             )
-            parsed = json.loads(_strip_json_fence(response.choices[0].message.content or "{}"))
+            parsed = json.loads(_strip_json_fence(response.content or "{}"))
             return parsed if isinstance(parsed, dict) else {"content": None, "confidence": 0.0}
         except Exception:
             logger.exception("Dream synthesis failed")
             return {"content": None, "confidence": 0.0}
 
 
-def _rerank_provider_kwargs(model: str) -> dict[str, str]:
-    """Route OpenRouter rerank models through its Cohere-compatible endpoint."""
-    if settings.openrouter_api_key and (
-        model.startswith("openrouter/") or model.startswith("cohere/rerank")
-    ):
-        return {
-            "model": model.removeprefix("openrouter/"),
-            "custom_llm_provider": "litellm_proxy",
-            "api_base": OPENROUTER_RERANK_API_BASE,
-            "api_key": settings.openrouter_api_key,
-        }
-    return {"model": model}
-
-
-def _value(item: object, key: str) -> object | None:
-    """Read a field from dict-like or attribute-based provider responses."""
-    return item.get(key) if isinstance(item, dict) else getattr(item, key, None)
-
-
 def _strip_json_fence(content: str) -> str:
     """Remove an optional markdown JSON fence from provider output."""
     match = re.fullmatch(r"```(?:json)?\s*(.*?)\s*```", content.strip(), flags=re.DOTALL)
     return match.group(1).strip() if match else content.strip()
+
+
+@lru_cache(maxsize=1)
+def get_inference_service() -> InferenceService:
+    """Return the process-wide provider and its long-lived session."""
+    return InferenceService()

@@ -16,7 +16,6 @@ def configure_phoenix_tracing() -> bool:
         return False
 
     try:
-        from openinference.instrumentation.litellm import LiteLLMInstrumentor
         from phoenix.otel import register
     except ImportError:
         logger.exception(
@@ -30,7 +29,6 @@ def configure_phoenix_tracing() -> bool:
         project_name=settings.phoenix_project_name,
         auto_instrument=False,
     )
-    LiteLLMInstrumentor().instrument()
     _configured = True
     logger.info(
         "Phoenix tracing configured for project '%s' at %s",

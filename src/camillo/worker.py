@@ -3,7 +3,7 @@ import asyncio
 
 from loguru import logger
 
-from camillo.ai.llm_service import LiteLLMService
+from camillo.ai.llm_service import get_inference_service
 from camillo.cognitive.dreaming_service import DreamingService
 from camillo.cognitive.recall_service import RecallService
 from camillo.cognitive.reconciliation_service import MemoryReconciliationService
@@ -27,7 +27,7 @@ async def run_once(*, dry_run: bool | None = None) -> None:
         return
     async with AsyncSessionLocal() as db:
         store = MemoryStore(db)
-        provider = LiteLLMService()
+        provider = get_inference_service()
         service = DreamingService(
             store,
             DreamStore(db),
@@ -44,7 +44,10 @@ async def run_once(*, dry_run: bool | None = None) -> None:
 async def main_async(argv: list[str] | None = None) -> None:
     """Parse arguments and execute one run; no loop is supported."""
     args = build_parser().parse_args(argv)
-    await run_once(dry_run=True if args.dry_run else None)
+    try:
+        await run_once(dry_run=True if args.dry_run else None)
+    finally:
+        await get_inference_service().close()
 
 
 def main() -> None:

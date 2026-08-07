@@ -36,7 +36,7 @@ except ImportError:  # pragma: no cover
 
 from pydantic import Field
 
-from camillo.ai.llm_service import LiteLLMService
+from camillo.ai.llm_service import get_inference_service
 from camillo.cognitive.recall_service import RecallService
 from camillo.cognitive.reconciliation_service import MemoryReconciliationService
 from camillo.db.session import AsyncSessionLocal
@@ -102,7 +102,7 @@ DESTRUCTIVE = ToolAnnotations(
 def _service(db: Any) -> MemoryReconciliationService:
     """Build the durable-memory boundary for one MCP transaction."""
     store = MemoryStore(db)
-    provider = LiteLLMService()
+    provider = get_inference_service()
     return MemoryReconciliationService(store, RecallService(store, provider), provider)
 
 
@@ -112,7 +112,7 @@ async def recall_memory(
 ) -> dict[str, Any]:
     """Recall active memories and reinforce their access metadata."""
     async with AsyncSessionLocal() as db:
-        service = RecallService(MemoryStore(db), LiteLLMService())
+        service = RecallService(MemoryStore(db), get_inference_service())
         candidates = await service.recall(query, top_k or settings.recall_top_k, workspace)
         await db.commit()
         return {
