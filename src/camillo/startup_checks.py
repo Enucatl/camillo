@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 def warn_missing_provider_keys() -> None:
     """Warn when an explicitly configured OpenRouter route lacks its key."""
     configured_models = (
-        settings.completion_model,
+        settings.chat_model,
         settings.embedding_model,
         settings.rerank_model or "",
     )

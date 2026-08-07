@@ -10,9 +10,9 @@ x-camillo-test-env: &camillo-test-env
   POSTGRES_HOST: postgres-test
   POSTGRES_PORT: "5432"
   EMBEDDING_DIM: "1024"
-  LITELLM_COMPLETION_MODEL: openrouter/google/gemma-4-31b-it:free
-  LITELLM_EMBEDDING_MODEL: openrouter/baai/bge-m3
-  LITELLM_RERANK_MODEL: openrouter/cohere/rerank-4-pro
+  INFERENCE_CHAT_MODEL: google/gemma-4-31b-it:free
+  INFERENCE_EMBEDDING_MODEL: baai/bge-m3
+  INFERENCE_RERANK_MODEL: cohere/rerank-4-pro
   OPENROUTER_API_KEY: ""
   PHOENIX_TRACING_ENABLED: "false"
   PHOENIX_COLLECTOR_ENDPOINT: https://phoenix-otlp.docker.home.arpa/v1/traces

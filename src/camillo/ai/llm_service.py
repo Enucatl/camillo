@@ -14,6 +14,10 @@ def _provider_for(endpoint: str) -> str:
     return "openrouter" if "openrouter.ai" in endpoint else "openai-compatible"
 
 
+def _key_for(endpoint: str) -> str | None:
+    return settings.openrouter_api_key if _provider_for(endpoint) == "openrouter" else None
+
+
 class InferenceService(EmbeddingProvider, Reranker):
     """Shared inference adapter for embeddings, reranking, and dreaming."""
 
@@ -21,21 +25,21 @@ class InferenceService(EmbeddingProvider, Reranker):
         self._session = niquests.AsyncSession(timeout=120)
         self._chat = InferenceClient(
             base_url=settings.chat_endpoint,
-            api_key=settings.openrouter_api_key,
+            api_key=_key_for(settings.chat_endpoint),
             provider=_provider_for(settings.chat_endpoint),
             domain="camillo",
             session=self._session,
         )
         self._embedding = InferenceClient(
             base_url=settings.embedding_endpoint,
-            api_key=settings.openrouter_api_key,
+            api_key=_key_for(settings.embedding_endpoint),
             provider=_provider_for(settings.embedding_endpoint),
             domain="camillo",
             session=self._session,
         )
         self._rerank = InferenceClient(
             base_url=settings.rerank_endpoint,
-            api_key=settings.openrouter_api_key,
+            api_key=_key_for(settings.rerank_endpoint),
             provider=_provider_for(settings.rerank_endpoint),
             domain="camillo",
             session=self._session,
@@ -85,7 +89,7 @@ class InferenceService(EmbeddingProvider, Reranker):
         )
         try:
             response = await self._chat.complete(
-                model=settings.dreaming_model or settings.completion_model,
+                model=settings.dreaming_model or settings.chat_model,
                 messages=[{"role": "user", "content": prompt}],
                 domain="dream_consolidation",
                 temperature=0,

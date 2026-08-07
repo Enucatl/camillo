@@ -14,12 +14,8 @@ x-camillo-env: &camillo-env
   INFERENCE_CHAT_ENDPOINT:
   INFERENCE_EMBEDDING_ENDPOINT:
   INFERENCE_RERANK_ENDPOINT:
-  # Transitional aliases for the existing deployment .env; remove after the
-  # INFERENCE_* variables are adopted everywhere.
-  LITELLM_COMPLETION_MODEL:
-  LITELLM_EMBEDDING_MODEL:
-  LITELLM_RERANK_MODEL:
   OPENROUTER_API_KEY:
+  OPENROUTER_API_KEY_FILE: /run/secrets/openrouter_api_key
   PHOENIX_TRACING_ENABLED:
   PHOENIX_COLLECTOR_ENDPOINT: ${PHOENIX_COLLECTOR_ENDPOINT:-https://phoenix-otlp.${DOCKER_DOMAIN}/v1/traces}
   PHOENIX_PROJECT_NAME: ${PHOENIX_PROJECT_NAME:-camillo}
@@ -35,7 +31,8 @@ x-camillo-env: &camillo-env
   DREAMING_DRY_RUN:
   DREAMING_SEED_LIMIT:
   DREAMING_MIN_SYNTHESIS_CONFIDENCE:
-  DREAMING_MODEL:
+  INFERENCE_DREAM_MODEL:
+  INFERENCE_DREAM_ENDPOINT:
   MCP_ALLOWED_HOSTS: ${MCP_ALLOWED_HOSTS:-camillo.${DOCKER_DOMAIN}}
 
 services:
@@ -145,3 +142,5 @@ secrets:
     file: ./secrets/fullchain.pem
   camillo_key:
     file: ./secrets/key.pem
+  openrouter_api_key:
+    file: ../paperless-ai/secrets/openrouter_api_key.txt

@@ -2,7 +2,7 @@ from functools import lru_cache
 from pathlib import Path
 from urllib.parse import quote
 
-from pydantic import AliasChoices, Field, model_validator
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -38,31 +38,26 @@ class Settings(BaseSettings):
     postgres_host: str = Field(default="postgres", alias="POSTGRES_HOST")
     postgres_port: int = Field(default=5432, alias="POSTGRES_PORT")
     embedding_dim: int = Field(alias="EMBEDDING_DIM")
-    completion_model: str = Field(
-        validation_alias=AliasChoices("INFERENCE_CHAT_MODEL", "LITELLM_COMPLETION_MODEL")
-    )
-    embedding_model: str = Field(
-        validation_alias=AliasChoices("INFERENCE_EMBEDDING_MODEL", "LITELLM_EMBEDDING_MODEL")
-    )
+    chat_model: str = Field(validation_alias="INFERENCE_CHAT_MODEL")
+    embedding_model: str = Field(validation_alias="INFERENCE_EMBEDDING_MODEL")
     rerank_model: str | None = Field(
         default=None,
-        validation_alias=AliasChoices("INFERENCE_RERANK_MODEL", "LITELLM_RERANK_MODEL"),
+        validation_alias="INFERENCE_RERANK_MODEL",
     )
     chat_endpoint: str = Field(
         default="https://openrouter.ai/api/v1",
-        validation_alias=AliasChoices("INFERENCE_CHAT_ENDPOINT", "OPENROUTER_CHAT_ENDPOINT"),
+        validation_alias="INFERENCE_CHAT_ENDPOINT",
     )
     embedding_endpoint: str = Field(
         default="https://openrouter.ai/api/v1",
-        validation_alias=AliasChoices(
-            "INFERENCE_EMBEDDING_ENDPOINT", "OPENROUTER_EMBEDDING_ENDPOINT"
-        ),
+        validation_alias="INFERENCE_EMBEDDING_ENDPOINT",
     )
     rerank_endpoint: str = Field(
         default="https://openrouter.ai/api/v1",
-        validation_alias=AliasChoices("INFERENCE_RERANK_ENDPOINT", "OPENROUTER_RERANK_ENDPOINT"),
+        validation_alias="INFERENCE_RERANK_ENDPOINT",
     )
     openrouter_api_key: str | None = Field(default=None, alias="OPENROUTER_API_KEY")
+    openrouter_api_key_file: str | None = Field(default=None, alias="OPENROUTER_API_KEY_FILE")
     phoenix_tracing_enabled: bool = Field(default=False, alias="PHOENIX_TRACING_ENABLED")
     phoenix_collector_endpoint: str = Field(
         default="https://phoenix-otlp.docker.home.arpa/v1/traces",
@@ -87,7 +82,46 @@ class Settings(BaseSettings):
         default=0.6,
         alias="DREAMING_MIN_SYNTHESIS_CONFIDENCE",
     )
-    dreaming_model: str | None = Field(default=None, alias="DREAMING_MODEL")
+    dreaming_model: str | None = Field(
+        default=None,
+        alias="INFERENCE_DREAM_MODEL",
+    )
+    dreaming_endpoint: str | None = Field(
+        default=None,
+        alias="INFERENCE_DREAM_ENDPOINT",
+    )
+    chat_temperature: float | None = Field(default=None, alias="INFERENCE_CHAT_TEMPERATURE")
+    chat_reasoning_effort: str | None = Field(default=None, alias="INFERENCE_CHAT_REASONING_EFFORT")
+    chat_max_tokens: int | None = Field(default=None, alias="INFERENCE_CHAT_MAX_TOKENS")
+    chat_extra_kwargs: dict[str, object] | None = Field(
+        default=None, alias="INFERENCE_CHAT_EXTRA_KWARGS"
+    )
+    embedding_extra_kwargs: dict[str, object] | None = Field(
+        default=None, alias="INFERENCE_EMBEDDING_EXTRA_KWARGS"
+    )
+    rerank_extra_kwargs: dict[str, object] | None = Field(
+        default=None, alias="INFERENCE_RERANK_EXTRA_KWARGS"
+    )
+    dream_temperature: float | None = Field(default=None, alias="INFERENCE_DREAM_TEMPERATURE")
+    dream_reasoning_effort: str | None = Field(
+        default=None, alias="INFERENCE_DREAM_REASONING_EFFORT"
+    )
+    dream_max_tokens: int | None = Field(default=None, alias="INFERENCE_DREAM_MAX_TOKENS")
+    dream_extra_kwargs: dict[str, object] | None = Field(
+        default=None, alias="INFERENCE_DREAM_EXTRA_KWARGS"
+    )
+
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_model_ids(cls, values: object) -> object:
+        if not isinstance(values, dict):
+            return values
+        for field in ("chat_model", "embedding_model", "rerank_model", "dreaming_model"):
+            if field in values and isinstance(values[field], str):
+                values[field] = values[field].removeprefix("openrouter/").removeprefix("openai/")
+        if not values.get("openrouter_api_key") and values.get("openrouter_api_key_file"):
+            values["openrouter_api_key"] = _read_secret_file(values["openrouter_api_key_file"])
+        return values
 
     @model_validator(mode="after")
     def build_database_url(self) -> Settings:
