@@ -4,18 +4,18 @@ from pydantic import BaseModel
 
 
 class IngestRequest(BaseModel):
-    """Request body for storing a conversation turn."""
+    """Automatic hook capture payload."""
 
-    namespace: str
     user_msg: str
     ai_msg: str
     session_id: str | None = None
+    workspace: str | None = None
 
 
 class IngestResponse(BaseModel):
-    """Response body for a stored memory."""
+    """Identifier and classification of the captured episode."""
 
     memory_id: UUID
-    namespace: str
+    workspace: str | None
     type: str
     base_importance: float

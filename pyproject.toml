@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "camillo"
 dynamic = ["version"]
-description = "A Postgres-native cognitive memory stack with LiteLLM, Hebbian edges, and ACT-R inspired decay."
+description = "A Postgres-native single-user cognitive memory stack with LiteLLM and retrieval decay."
 requires-python = ">=3.14"
 dependencies = [
     "fastapi>=0.115.0",

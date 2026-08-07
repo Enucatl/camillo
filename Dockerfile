@@ -14,13 +14,14 @@ RUN groupadd --gid 10000 camillo \
 USER camillo
 
 COPY --chown=camillo:camillo pyproject.toml uv.lock README.md ./
-RUN uv sync --locked --no-dev --extra trace --no-install-project
+ARG CAMILLO_DEV=false
+RUN if [ "$CAMILLO_DEV" = "true" ]; then uv sync --locked --extra trace --extra dev --no-install-project; else uv sync --locked --no-dev --extra trace --no-install-project; fi
 
 COPY --chown=camillo:camillo src ./src
 COPY --chown=camillo:camillo alembic.ini ./
 COPY --chown=camillo:camillo migrate ./migrate
 
-RUN uv sync --locked --no-dev --extra trace
+RUN if [ "$CAMILLO_DEV" = "true" ]; then uv sync --locked --extra trace --extra dev; else uv sync --locked --no-dev --extra trace; fi
 
 EXPOSE 8000
 

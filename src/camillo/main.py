@@ -9,6 +9,7 @@ from camillo.api import (
     routes_health,
     routes_ingest,
     routes_recall,
+    routes_stats,
     routes_submit_memory,
 )
 from camillo.logging_config import configure_logging
@@ -39,6 +40,7 @@ app = FastAPI(title=settings.app_name, lifespan=lifespan)
 app.include_router(routes_health.router)
 app.include_router(routes_ingest.router)
 app.include_router(routes_recall.router)
+app.include_router(routes_stats.router)
 app.include_router(routes_submit_memory.router)
 app.include_router(routes_dreaming.router)
 

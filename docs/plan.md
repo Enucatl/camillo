@@ -1,4 +1,6 @@
-# Overall Architecture
+# Historical Architecture Plan (Superseded)
+
+> The active implementation record is the repository-root `plan.md`.
 
 The system should be built as a **modular cognitive memory service** with clean boundaries between storage, LLM routing, retrieval, graph reinforcement, consolidation, and external agent access.
 
@@ -1436,4 +1438,3 @@ from hebbian_edges;
 That will confirm the cognitive substrate is alive before adding more intelligence.
 
 [1]: https://hub.docker.com/r/pgvector/pgvector/tags?utm_source=chatgpt.com "pgvector - Docker Image"
-

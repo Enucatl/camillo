@@ -21,12 +21,13 @@ x-camillo-test-env: &camillo-test-env
   RECALL_TOP_K: "5"
   RECALL_VECTOR_LIMIT: "30"
   RECALL_FULL_TEXT_SEARCH_LIMIT: "30"
-  HEBBIAN_EDGE_THRESHOLD: "2.0"
 
 x-camillo-image: &camillo-image
   build:
     context: .
     dockerfile: Dockerfile
+    args:
+      CAMILLO_DEV: "true"
   image: camillo:test
   environment:
     <<: *camillo-test-env

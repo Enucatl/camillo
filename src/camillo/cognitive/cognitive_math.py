@@ -38,32 +38,3 @@ def calculate_activation(
     decay_score = exp(-decay_rate * hours_since_last_access)
     activation = (base_importance * decay_score) + (log(access_count + 1) * 0.2)
     return max(0.0, min(activation, 1.5))
-
-
-def calculate_edge_decay(
-    weight: float,
-    last_co_accessed_at: datetime,
-    *,
-    decay_rate: float,
-    now: datetime | None = None,
-) -> float:
-    """Decay a Hebbian edge weight according to elapsed co-access time.
-
-    Args:
-        weight: Current association strength.
-        last_co_accessed_at: Timezone-aware timestamp from Postgres.
-        decay_rate: Exponential decay rate per hour.
-        now: Optional timezone-aware clock value for deterministic tests.
-
-    Returns:
-        The decayed edge weight, never below zero.
-
-    Raises:
-        ValueError: If a caller supplies a naive datetime.
-    """
-    current_time = now or _aware_now()
-    if current_time.tzinfo is None or last_co_accessed_at.tzinfo is None:
-        raise ValueError("calculate_edge_decay requires timezone-aware datetimes")
-    elapsed = current_time - last_co_accessed_at
-    hours_since_last_access = max(elapsed.total_seconds() / 3600, 0)
-    return max(0.0, weight * exp(-decay_rate * hours_since_last_access))

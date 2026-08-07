@@ -20,7 +20,6 @@ class DreamStore:
 
     async def create_run(
         self,
-        namespace: str,
         *,
         dry_run: bool,
         metadata: dict[str, Any] | None = None,
@@ -28,7 +27,6 @@ class DreamStore:
         """Create a run row before seed selection starts.
 
         Args:
-            namespace: Memory partition being consolidated.
             dry_run: Whether the run is observational only.
             metadata: Optional settings snapshot for auditability.
 
@@ -36,7 +34,6 @@ class DreamStore:
             The flushed dream run model.
         """
         dream_run = DreamRun(
-            namespace=namespace,
             status="dry_run" if dry_run else "running",
             started_at=datetime.now(UTC),
             metadata_json=metadata or {},
