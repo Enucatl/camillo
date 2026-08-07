@@ -51,11 +51,42 @@ Workspace = Annotated[
 Content = Annotated[str, Field(min_length=1, description="Memory content.")]
 MemoryId = Annotated[str, Field(min_length=1, description="One explicit memory UUID.")]
 
+
+def _mcp_allowed_hosts() -> list[str]:
+    """Allow local development and the configured reverse-proxy hostname."""
+    defaults = [
+        "127.0.0.1",
+        "127.0.0.1:*",
+        "localhost",
+        "localhost:*",
+        "[::1]",
+        "[::1]:*",
+    ]
+    configured = [
+        host.strip() for host in os.getenv("MCP_ALLOWED_HOSTS", "").split(",") if host.strip()
+    ]
+    expanded = []
+    for host in configured:
+        expanded.append(host)
+        if not host.startswith("[") and ":" not in host:
+            expanded.append(f"{host}:*")
+    return list(dict.fromkeys(defaults + expanded))
+
+
 mcp = FastMCP(
     "camillo",
     host=os.getenv("MCP_HOST", "127.0.0.1"),
     port=int(os.getenv("MCP_PORT", "8001")),
     streamable_http_path="/",
+    transport_security=TransportSecuritySettings(
+        enable_dns_rebinding_protection=True,
+        allowed_hosts=_mcp_allowed_hosts(),
+        allowed_origins=[
+            "http://127.0.0.1:*",
+            "http://localhost:*",
+            "http://[::1]:*",
+        ],
+    ),
 )
 READ_ONLY = ToolAnnotations(
     readOnlyHint=True, destructiveHint=False, idempotentHint=True, openWorldHint=False
