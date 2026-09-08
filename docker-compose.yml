@@ -90,7 +90,6 @@ services:
     tmpfs:
       - /tmp:rw,noexec,nosuid,size=64m
     labels:
-      - "checkmk_monitor=true"
       - "traefik.enable=true"
       - "traefik.docker.network=traefik_proxy"
       - "traefik.http.routers.camillo.rule=Host(`camillo.${DOCKER_DOMAIN}`)"
