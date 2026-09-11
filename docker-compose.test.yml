@@ -12,7 +12,7 @@ x-camillo-test-env: &camillo-test-env
   EMBEDDING_DIM: "1024"
   INFERENCE_CHAT_MODEL: google/gemma-4-31b-it:free
   INFERENCE_EMBEDDING_MODEL: baai/bge-m3
-  INFERENCE_RERANK_MODEL: cohere/rerank-4-pro
+  INFERENCE_RERANK_MODEL: voyageai/rerank-2.5-lite
   OPENROUTER_API_KEY: ""
   PHOENIX_TRACING_ENABLED: "false"
   PHOENIX_COLLECTOR_ENDPOINT: https://phoenix-otlp.docker.home.arpa/v1/traces
